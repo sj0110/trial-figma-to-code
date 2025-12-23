@@ -1,400 +1,348 @@
-// src/components/ChatbotTourPage.tsx
-'use client'; // This component uses useState, so it must be a Client Component.
+// File Path Comment: src/components/ChatbotTour.tsx
+// CRITICAL: Ensure all imports, APIs, and syntax match React 19, TypeScript 5.6+, and Tailwind 3.4+
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
-// --- Design System Mappings (Colors & Typography) ---
+// --- Utility Functions ---
+const hexToRgb = (hex: string, alpha?: number): string => {
+  let r = 0, g = 0, b = 0;
+  if (!hex || typeof hex !== 'string') return `rgba(0, 0, 0, ${alpha !== undefined ? alpha : 1})`;
 
-// Strict adherence to provided HEX codes. Using arbitrary values for Tailwind CSS.
-const designColors = {
-  white: '#ffffff',
-  darkBlue: '#101828', // color-2
-  lightGrayText: '#4a5565', // color-3
-  lighterGray: '#99a1af', // color-4
-  bluePrimary: '#155dfc', // color-5
-  lightBlueBackground: '#eff6ff', // color-6
-  mediumGrayText: '#6a7282', // color-7
-  offWhiteBackground: '#f3f4f6', // color-8
-  lightGreenBackground: '#dcfce7', // color-9
-  greenPrimary: '#008236', // color-10
-  grayBorder: '#e5e7eb', // Inferred from fill color {r: 0.8983431458473206, g: 0.9064381718635559, b: 0.9226285219192505}
-  blueGradientStart1: '#2b7dfc', // Inferred from gradient stop {r: 0.16933250427246094, g: 0.49804946780204773, b: 1, a: 1}
-  blueGradientStart2: '#615ffc', // Inferred from gradient stop {r: 0.3821760416030884, g: 0.37188830971717834, b: 1, a: 1}
-  pinkGradientStart: '#f6339a', // Inferred from gradient stop {r: 0.9658054709434509, g: 0.19813881814479828, b: 0.6043243408203125, a: 1}
-  pinkGradientEnd: '#e40076', // Inferred from gradient stop {r: 0.901336133480072, g: 0, b: 0.46341004967689514, a: 1}
-  greenGradientStart: '#00c850', // Inferred from gradient stop {r: 0, g: 0.7871556282043457, b: 0.3156217634677887, a: 1}
-  greenGradientEnd: '#00a63e', // Inferred from gradient stop {r: 0, g: 0.6513022780418396, b: 0.24199256300926208, a: 1}
-  darkGradientStart: '#364153', // Inferred from gradient stop {r: 0.211532324552536, g: 0.2550295889377594, b: 0.32470521330833435, a: 1}
-  darkGradientEnd: '#1d293c', // Inferred from gradient stop {r: 0.11697349697351456, g: 0.1607542783021927, b: 0.22201550006866455, a: 1}
-  redDot: '#fc2c36', // Inferred from fill color {r: 0.9843137264251709, g: 0.1725490242242813, b: 0.21176470816135406, a: 1}
-  errorRed: '#e7000b', // Inferred from fill color {r: 0.9064575433731079, g: 0, b: 0.04221457988023758, a: 1}
-  warningYellow: '#ffe7d4', // Inferred from fill color {r: 1, g: 0.929411768913269, b: 0.8313725590705872, a: 1}
-  warningYellowText: '#c93400', // Inferred from fill color {r: 0.7918817400932312, g: 0.20726990699768066, b: 0, a: 1}
-  lightBlueBorder: '#bee1ff', // Inferred from stroke color {r: 0.7450929880142212, g: 0.8586637377738953, b: 1, a: 1}
-  darkGray: '#6a7282', // Inferred for user icon
-  grayText: '#606a74', // Inferred from text {r: 0.6000087857246399, g: 0.631395161151886, b: 0.6852225661277771}
-  blueAccent: '#004fff', // Inferred from fill color {r: 0, g: 0.31168830394744873, b: 1, a: 1}
+  // Handle 3-digit hex (e.g., #F00) and 6-digit hex (e.g., #FF0000)
+  const cleanedHex = hex.startsWith('#') ? hex.slice(1) : hex;
+  if (cleanedHex.length === 3) {
+    r = parseInt(cleanedHex[0] + cleanedHex[0], 16);
+    g = parseInt(cleanedHex[1] + cleanedHex[1], 16);
+    b = parseInt(cleanedHex[2] + cleanedHex[2], 16);
+  } else if (cleanedHex.length === 6) {
+    r = parseInt(cleanedHex.substring(0, 2), 16);
+    g = parseInt(cleanedHex.substring(2, 4), 16);
+    b = parseInt(cleanedHex.substring(4, 6), 16);
+  } else {
+    // Fallback for invalid hex
+    return `rgba(0, 0, 0, ${alpha !== undefined ? alpha : 1})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha !== undefined ? alpha : 1})`;
 };
 
-// Mapped typography classes based on designSystem.typography and inferred styles.
-// Assuming 'Inter' font family is configured in Tailwind or available globally.
-const typographyClasses = {
-  'heading-1': `font-inter text-[30px] font-medium leading-[36px] tracking-[-0.6px]`, // Adjusted to fit height
-  'heading-2': `font-inter text-xl font-medium leading-[30px] tracking-[-0.45px]`, // Matches fontSize 20px, lineHeight 30px
-  'heading-3': `font-inter text-base font-medium leading-[24px] tracking-[-0.31px]`, // Matches fontSize 16px, lineHeight 24px
-  'paragraph-large': `font-inter text-xl font-normal leading-[30px] tracking-[-0.45px]`, // Inferred for larger paragraphs
-  'paragraph-base': `font-inter text-base font-normal leading-[24px] tracking-[-0.31px]`, // Matches fontSize 16px, lineHeight 24px
-  'paragraph-small': `font-inter text-sm font-normal leading-5 tracking-[-0.25px]`, // Inferred for smaller text (14px font, 20px line height)
+// Helper for linear gradients from Figma data
+const getLinearGradient = (stops: Array<{ color: { r: number, g: number, b: number, a: number }, position: number }>, transform: number[][]): string => {
+  let angle = 270; // Default to top-to-bottom
+
+  // A pragmatic approach for common Figma gradient transformations to CSS angles
+  // For [[0.5, 0.5, 0], [-0.25, 0.25, 0.5]] (diagonal)
+  // For [[0, -1, 1], [0.5, 0, 0.25]] (top to bottom based on relative transform Y increasing)
+  if (transform && transform.length === 2 && transform[0].length === 3 && transform[1].length === 3) {
+      const a = transform[0][0];
+      const b = transform[0][1];
+      const c = transform[1][0];
+      const d = transform[1][1];
+
+      // Detect common angles
+      if (a === 1 && b === 0 && c === 0 && d === 1) angle = 90; // Left to right
+      else if (a === -1 && b === 0 && c === 0 && d === -1) angle = 270; // Right to left
+      else if (a === 0 && b === 1 && c === -1 && d === 0) angle = 180; // Bottom to top
+      else if (a === 0 && b === -1 && c === 1 && d === 0) angle = 0; // Top to bottom
+
+      // More complex diagonal handling, e.g., atan2(b, a)
+      if (a !== 0 || b !== 0) {
+          const calculatedAngle = Math.atan2(b, a) * (180 / Math.PI);
+          angle = Math.round((calculatedAngle + 360) % 360);
+      }
+  }
+
+  const gradientStops = stops.map(stop => {
+    const { r, g, b, a } = stop.color;
+    return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a}) ${Math.round(stop.position * 100)}%`;
+  }).join(', ');
+  return `linear-gradient(${angle}deg, ${gradientStops})`;
 };
 
-// --- Icon Components ---
-// These SVG paths are directly extracted and mapped to currentColor for easy styling via Tailwind text-color.
+// Helper for box shadows from Figma effects
+const getBoxShadow = (effects: any[]): string => {
+  return effects
+    .filter(effect => effect?.type === 'DROP_SHADOW' && effect.visible)
+    .map(effect => {
+      const { x, y } = effect.offset || { x: 0, y: 0 };
+      const radius = effect.radius || 0;
+      const spread = effect.spread || 0;
+      const { r, g, b, a } = effect.color || { r: 0, g: 0, b: 0, a: 0 };
+      return `${x}px ${y}px ${radius}px ${spread}px rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+    })
+    .join(', ');
+};
 
-const ChevronRightIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path d="M6 12L10 8L6 4" strokeWidth="1.33" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+// --- Design System Mappings ---
+const colors = {
+  'color-1': '#ffffff',
+  'color-2': '#101828',
+  'color-3': '#4a5565',
+  'color-4': '#99a1af',
+  'color-5': '#155dfc',
+  'color-6': '#eff6ff',
+  'color-7': '#6a7282',
+  'color-8': '#f3f4f6',
+  'color-9': '#dcfce7', // Light green for active status
+  'color-10': '#008236', // Dark green for active status text
+  'status-expiring-bg': '#fef3f2', // Inferred light red/orange for expiring status
+  'status-expiring-text': '#c70a00', // From designData for text `2:5126` in `CurrentPlanCard` (r:0.9064575433731079, g:0, b:0.04221457988023758)
+  'cignal-blue': '#004FFC', // From designData for Chatbot FAB background (r:0,g:0.31168830394744873,b:1)
+  'cignal-accent': '#FFDD20', // From designData for Wallet icon color
+  'cignal-pink': '#FC62D5', // From designData for Rewards icon color
+};
 
-const WalletIcon = ({ className = 'stroke-white' }: { className?: string }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M19 8H5C3.89543 8 3 8.89543 3 10V18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V10C21 8.89543 20.1046 8 19 8Z"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M7 12H9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M17 12H21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path
-      d="M3 10C3 8.89543 3.89543 8 5 8H19C20.1046 8 21 8.89543 21 10V6C21 4.89543 20.1046 4 19 4H5C3.89543 4 3 4.89543 3 6V10Z"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+const typography = {
+  'body-text': {
+    fontFamily: 'Inter',
+    fontSize: '16px',
+    fontWeight: '400',
+    lineHeight: '24px',
+    letterSpacing: '-0.3125px',
+    color: colors['color-3'],
+  },
+  'heading-main': {
+    fontFamily: 'Inter',
+    fontSize: '20px',
+    fontWeight: '500',
+    lineHeight: '30px',
+    letterSpacing: '-0.44921875px',
+    color: colors['color-2'],
+  },
+  'heading-xl': { // Used for "Cignal One" in TopBar, and "AI Chatbot Assistant" in overlay
+    fontFamily: 'Inter',
+    fontSize: '24px',
+    fontWeight: '500',
+    lineHeight: '24px',
+    letterSpacing: '-0.44921875px',
+    color: colors['color-2'],
+  },
+  'heading-2xl': { // Used for "New Release: Action Movies Marathon"
+    fontFamily: 'Inter',
+    fontSize: '30px',
+    fontWeight: '500',
+    lineHeight: '30px',
+    letterSpacing: '-0.54921875px',
+    color: colors['color-1'],
+  },
+  'text-sm-regular': { // for descriptions like "Premium TV experience" (16px, but smaller line height)
+    fontFamily: 'Inter',
+    fontSize: '16px',
+    fontWeight: '400',
+    lineHeight: '16px',
+    letterSpacing: '-0.3125px',
+    color: colors['color-7'],
+  },
+  'text-sm-medium': { // for small text with medium weight like "8 Episodes", "Drama"
+    fontFamily: 'Inter',
+    fontSize: '14px',
+    fontWeight: '500',
+    lineHeight: '16px',
+    letterSpacing: '-0.3125px',
+    color: colors['color-7'],
+  },
+  'text-base-medium': { // for "View All", "Manage", "Upgrade", "Next" etc.
+    fontFamily: 'Inter',
+    fontSize: '16px',
+    fontWeight: '500',
+    lineHeight: '20px', // Adjusted to common button text line-height
+    letterSpacing: '-0.3125px',
+    color: colors['color-5'], // Default to primary blue for links/buttons
+  },
+};
 
-const StarIcon = ({ className = 'stroke-[#FFDE20]' }: { className?: string }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M9.99775 1.66634L12.4972 6.66634L17.4966 6.66634L13.3303 9.99967L14.9966 14.9989L9.99775 11.6655L4.99887 14.9989L6.66517 9.99967L2.49944 6.66634L7.49832 6.66634L9.99775 1.66634Z"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
+// Helper function for inline styles from typography
+const getTypographyStyle = (type: keyof typeof typography, overrides?: React.CSSProperties): React.CSSProperties => {
+  const baseStyle = typography[type];
+  return {
+    fontFamily: baseStyle.fontFamily,
+    fontSize: baseStyle.fontSize,
+    fontWeight: baseStyle.fontWeight,
+    lineHeight: baseStyle.lineHeight,
+    letterSpacing: baseStyle.letterSpacing,
+    color: baseStyle.color,
+    ...overrides,
+  };
+};
 
-const PlusIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path d="M12 5V19" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M5 12H19" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const VideoPlayerIcon = ({ className = 'stroke-white' }: { className?: string }) => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path d="M16 12L32 24L16 36V12Z" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-    <path
-      d="M44 24C44 35.0457 35.0457 44 24 44C12.9543 44 4 35.0457 4 24C4 12.9543 12.9543 4 24 4C35.0457 4 44 12.9543 44 24Z"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const ClockIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 12 12"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M5.99956 2.99978V5.99956L7.99942 6.9995M11 5.99956C11 8.761 8.761 11 5.99956 11C3.23812 11 1 8.761 1 5.99956C1 3.23812 3.23812 1 5.99956 1C8.761 1 11 3.23812 11 5.99956Z"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const WifiIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M12 2C8.68351 2.0526 5.56843 3.49397 3.32754 5.99996L12 15L20.6725 5.99996C18.4316 3.49397 15.3165 2.0526 12 2Z"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12 19.5C12.8284 19.5 13.5 18.8284 13.5 18C13.5 17.1716 12.8284 16.5 12 16.5C11.1716 16.5 10.5 17.1716 10.5 18C10.5 18.8284 11.1716 19.5 12 19.5Z"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path d="M7 11L12 16L17 11" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const TVIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="48"
-    height="48"
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M14 8V32C14 33.1046 14.8954 34 16 34H40C41.1046 34 42 33.1046 42 32V8C42 6.89543 41.1046 6 40 6H16C14.8954 6 14 6.89543 14 8Z"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M32 34L36 40"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M16 34L12 40"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M6 34L10 40"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M28 34L32 40"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M10 20H40"
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const ChatbotIcon = ({ className = 'stroke-white' }: { className?: string }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M21 11.5C21 16.7467 16.7467 21 11.5 21C9.64603 21 7.91572 20.4704 6.44474 19.5397L3 21L4.53974 17.5553C3.52924 16.0354 3 14.3032 3 11.5C3 6.2533 7.2533 2 11.5 2C16.7467 2 21 6.2533 21 11.5Z"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const UserIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M10 11C12.7614 11 15 8.76142 15 6C15 3.23858 12.7614 1 10 1C7.23858 1 5 3.23858 5 6C5 8.76142 7.23858 11 10 11Z"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M17 19C17 15.134 13.866 12 10 12C6.13401 12 3 15.134 3 19"
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const HomeIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M2.5 7.5L10 1.25L17.5 7.5V17.5C17.5 17.8315 17.3683 18.1495 17.1339 18.3839C16.8995 18.6183 16.5815 18.75 16.25 18.75H3.75C3.41848 18.75 3.10054 18.6183 2.86612 18.3839C2.6317 18.1495 2.5 17.8315 2.5 17.5V7.5Z"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M7.5 18.75V11.25H12.5V18.75"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const SubscriptionIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M3.75 16.25H16.25C16.5815 16.25 16.8995 16.1183 17.1339 15.8839C17.3683 15.6495 17.5 15.3315 17.5 15V6.25C17.5 5.91848 17.3683 5.60054 17.1339 5.36612C16.8995 5.1317 16.5815 5 16.25 5H3.75C3.41848 5 3.10054 5.1317 2.86612 5.36612C2.6317 5.60054 2.5 5.91848 2.5 6.25V15C2.5 15.3315 2.6317 15.6495 2.86612 15.8839C3.10054 16.1183 3.41848 16.25 3.75 16.25Z"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M10 2.5V5"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M6.25 2.5V5"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M13.75 2.5V5"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M2.5 8.75H17.5"
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const HelpIcon = ({ className = 'stroke-current' }: { className?: string }) => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <path
-      d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M8.85299 6.81342C9.4208 6.20853 10.1558 5.75389 11.002 5.5188C11.8482 5.2837 12.7667 5.28186 13.6133 5.52355C14.4599 5.76523 15.1979 6.22415 15.7686 6.83063C16.3393 7.43712 16.6976 8.16369 16.7906 8.93043C16.8837 9.69717 16.7077 10.4578 16.2917 11.1098C15.8757 11.7618 15.2471 12.2789 14.498 12.6053L12 14"
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M11.6871 16.5568H11.6971"
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-// --- Reusable Sub-components ---
-
-interface AppCardProps {
-  title: string;
-  description: string;
-  gradientStart: string;
-  gradientEnd: string;
-  icon: React.ReactNode;
+// --- SVG Icons (Simplified for brevity, assuming they are available or generated) ---
+// Example:
+interface IconProps {
+  color: string;
+  style?: React.CSSProperties;
 }
 
-const AppCard: React.FC<AppCardProps> = ({ title, description, gradientStart, gradientEnd, icon }) => (
-  <div className="flex flex-col gap-2 w-[128px] flex-shrink-0">
-    <div
-      className={`flex items-center justify-center w-[128px] h-[128px] rounded-[14px] shadow-[0px_4px_6px_-4px_rgba(0,0,0,0.1),_0px_10px_15px_-3px_rgba(0,0,0,0.1)]`}
-      style={{
-        background: `linear-gradient(135deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
-      }}
-    >
+const ChevronRightIcon: React.FC<IconProps> = ({ color, style }) => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={style}>
+    <path d="M6 12L10 8L6 4" stroke={color} strokeWidth="1.33273" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const WalletIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 10H21V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V10Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 10V14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 4H19C19.5304 4 20.0391 4.21071 20.4142 4.58579C20.7893 4.96086 21 5.46957 21 6V10H3V6C3 5.46957 3.21071 4.96086 3.58579 4.58579C3.96086 4.21071 4.46957 4 5 4Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7 12V17" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 12H17" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7 6V11" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const RewardsIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3.33331 3.33333L10 10L16.6666 3.33333" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M16.6666 16.6667L10 10L3.33331 16.6667" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5.83203 4.99888V8.33146" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12.1556 11.5641L14.5051 14.5051" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const PlayIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="8" height="12" viewBox="0 0 8 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7 6L1 11.1962L1 0.803848L7 6Z" fill={color}/>
+  </svg>
+);
+
+const ClockIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 3V6L8 7" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M11 6C11 8.76142 8.76142 11 6 11C3.23858 11 1 8.76142 1 6C1 3.23858 3.23858 1 6 1C8.76142 1 11 3.23858 11 6Z" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const CalendarIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2.5 16.6667V5C2.5 4.53043 2.68453 4.07828 3.01184 3.75097C3.33915 3.42366 3.7913 3.23914 4.25 3.23914H15.75C16.2087 3.23914 16.6609 3.42366 16.9882 3.75097C17.3155 4.07828 17.5 4.53043 17.5 5V16.6667C17.5 17.1253 17.3155 17.5775 16.9882 17.9048C16.6609 18.2321 16.2087 18.4167 15.75 18.4167H4.25C3.7913 18.4167 3.33915 18.2321 3.01184 17.9048C2.68453 17.5775 2.5 17.1253 2.5 16.6667Z" stroke={color} strokeWidth="1.94786" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M7.49969 1.94795V5.84381" stroke={color} strokeWidth="1.94786" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12.4997 1.94795V5.84381" stroke={color} strokeWidth="1.94786" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2.5 9.73969H17.5" stroke={color} strokeWidth="1.94786" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ChatIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.6213 3.44772 15.143 4.23724 16.4465L3 21L7.55355 19.7628C8.85705 20.5523 10.3787 21 12 21Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const HomeIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.5 16.6667V10C7.5 9.53043 7.68453 9.07828 8.01184 8.75097C8.33915 8.42366 8.7913 8.23914 9.25 8.23914H10.75C11.2087 8.23914 11.6609 8.42366 11.9882 8.75097C12.3155 9.07828 12.5 9.53043 12.5 10V16.6667" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2.5 10L10 3.33333L17.5 10" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SubscriptionsIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4.16669 8.33333H15.8334V15.8333C15.8334 16.292 15.6489 16.7442 15.3216 17.0715C14.9943 17.3988 14.5421 17.5833 14.0834 17.5833H5.91669C5.45795 17.5833 5.00580 17.3988 4.67849 17.0715C4.35118 16.7442 4.16669 16.292 4.16669 15.8333V8.33333Z" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8.33331 4.16667H11.6666V8.33334H4.16669V5C4.16669 4.54131 4.35118 4.08916 4.67849 3.76185C5.00580 3.43454 5.45795 3.25 5.91669 3.25H14.0834C14.5421 3.25 14.9943 3.43454 15.3216 3.76185C15.6489 4.08916 15.8334 4.54131 15.8334 5V8.33334H11.6666" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const HelpIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 17.5C14.1421 17.5 17.5 14.1421 17.5 10C17.5 5.85786 14.1421 2.5 10 2.5C5.85786 2.5 2.5 5.85786 2.5 10C2.5 11.6213 3.03369 13.143 4.05359 14.4465L2.5 17.5L5.55355 16.4465C6.85705 17.4663 8.3787 17.5 10 17.5Z" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ProfileIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4.16669 16.6667V15C4.16669 13.9189 4.60599 12.8826 5.38555 12.103C6.16511 11.3235 7.20146 10.8842 8.28257 10.8842H11.7174C12.7985 10.8842 13.8349 11.3235 14.6145 12.103C15.394 12.8826 15.8334 13.9189 15.8334 15V16.6667" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9.99996 9.16667C11.9329 9.16667 13.5 7.59959 13.5 5.66667C13.5 3.73375 11.9329 2.16667 9.99996 2.16667C8.06704 2.16667 6.49996 3.73375 6.49996 5.66667C6.49996 7.59959 8.06704 9.16667 9.99996 9.16667Z" stroke={color} strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const InternetIssuesIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.6213 3.44772 15.143 4.23724 16.4465L3 21L7.55355 19.7628C8.85705 20.5523 10.3787 21 12 21Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9 10C9 10.5523 9.44772 11 10 11C10.5523 11 11 10.5523 11 10C11 9.44772 10.5523 9 10 9C9.44772 9 9 9.44772 9 10Z" fill={color}/>
+    <path d="M13 10C13 10.5523 13.4477 11 14 11C14.5523 11 15 10.5523 15 10C15 9.44772 14.5523 9 14 9C13.4477 9 13 9.44772 13 10Z" fill={color}/>
+  </svg>
+);
+
+const NoTvSignalIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 6C18 3.79086 16.2091 2 14 2H10C7.79086 2 6 3.79086 6 6V18C6 20.2091 7.79086 22 10 22H14C16.2091 22 18 20.2091 18 18V6Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 18H12.01" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 6H14" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ResetDeviceIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M17 8H22V3" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 18V12" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M15 15L12 18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9 15L12 18" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const CallSupportIcon: React.FC<IconProps> = ({ color }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5.50005 8.5C5.50005 7.94772 5.94777 7.5 6.50005 7.5H17.5C18.0523 7.5 18.5001 7.94772 18.5001 8.5V15.5C18.5001 16.0523 18.0523 16.5 17.5001 16.5H6.50005C5.94777 16.5 5.50005 16.0523 5.50005 15.5V8.5Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 5.5V7.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 16.5V18.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 18.5V20.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 3.5V5.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 2.5V3.5" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+// Helper for generic icon rendering based on name
+const renderIcon = (iconName: string, color: string, style?: React.CSSProperties) => {
+  switch (iconName) {
+    case 'ChevronRight': return <ChevronRightIcon color={color} style={style} />;
+    case 'Wallet': return <WalletIcon color={color} />;
+    case 'Rewards': return <RewardsIcon color={color} />;
+    case 'Play': return <PlayIcon color={color} />;
+    case 'Clock': return <ClockIcon color={color} />;
+    case 'Calendar': return <CalendarIcon color={color} />;
+    case 'Chat': return <ChatIcon color={color} />;
+    case 'Home': return <HomeIcon color={color} />;
+    case 'Subscriptions': return <SubscriptionsIcon color={color} />;
+    case 'Help': return <HelpIcon color={color} />;
+    case 'Profile': return <ProfileIcon color={color} />;
+    case 'InternetIssues': return <InternetIssuesIcon color={color} />;
+    case 'NoTvSignal': return <NoTvSignalIcon color={color} />;
+    case 'ResetDevice': return <ResetDeviceIcon color={color} />;
+    case 'CallSupport': return <CallSupportIcon color={color} />;
+    default: return null;
+  }
+};
+
+// --- Sub-components for better organization ---
+
+interface AppCardProps {
+  gradient?: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  customBorder?: string;
+  customBorderWidth?: string;
+  customPadding?: string;
+  customTextMarginTop?: string;
+}
+
+const AppCard: React.FC<AppCardProps> = ({ gradient, icon, title, description, customBorder, customBorderWidth, customPadding, customTextMarginTop }) => (
+  <div className="flex flex-col items-center flex-shrink-0 w-[128px] rounded-[14px]"
+       style={{
+         boxShadow: customBorder ? 'none' : getBoxShadow([
+           { type: "DROP_SHADOW", visible: true, radius: 6, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 4 }, spread: -4, blendMode: "NORMAL", showShadowBehindNode: false },
+           { type: "DROP_SHADOW", visible: true, radius: 15, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 10 }, spread: -3, blendMode: "NORMAL", showShadowBehindNode: false }
+         ]),
+         border: customBorder || 'none',
+         borderWidth: customBorderWidth || '0',
+         padding: customPadding || '0',
+       }}
+  >
+    <div className="w-[128px] h-[128px] flex items-center justify-center rounded-[14px]" style={{ background: gradient || 'transparent' }}>
       {icon}
     </div>
-    <p className={`${typographyClasses['paragraph-base']} text-center text-[${designColors.darkBlue}] mt-2`}>
+    <h4 className={`w-full text-center ${customTextMarginTop || 'mt-2.5'}`} style={getTypographyStyle('heading-main', {fontSize: '18px', lineHeight: '20px', letterSpacing: typography['body-text'].letterSpacing, color: colors['color-2']})}>
       {title}
-    </p>
-    <p className={`${typographyClasses['paragraph-small']} text-center text-[${designColors.lightGrayText}]`}>
+    </h4>
+    <p className="w-full text-center" style={getTypographyStyle('text-sm-regular', {fontSize: '16px', lineHeight: '16px'})}>
       {description}
     </p>
   </div>
@@ -402,37 +350,50 @@ const AppCard: React.FC<AppCardProps> = ({ title, description, gradientStart, gr
 
 interface ContentCardProps {
   imageSrc: string;
-  category: string;
   title: string;
-  episodesOrDuration: string;
-  showClockIcon?: boolean;
+  category: string;
+  metadata: string;
 }
 
-const ContentCard: React.FC<ContentCardProps> = ({
-  imageSrc,
-  category,
-  title,
-  episodesOrDuration,
-  showClockIcon = true,
-}) => (
-  <div className="w-[192px] h-[176px] rounded-[14px] bg-[${designColors.darkBlue}] flex flex-col overflow-hidden flex-shrink-0">
-    <div
-      className="relative w-full h-[112px] rounded-t-[14px] flex items-center justify-center"
-      style={{
-        background: `linear-gradient(135deg, ${designColors.darkGradientStart} 0%, ${designColors.darkGradientEnd} 100%)`,
-      }}
-    >
-      <VideoPlayerIcon className="w-12 h-12" /> {/* Generic video player icon */}
+const ContentCard: React.FC<ContentCardProps> = ({ imageSrc, title, category, metadata }) => (
+  <div className="flex flex-col flex-shrink-0 w-[192px] h-[176px] rounded-[14px] bg-color-2 overflow-hidden"
+    style={{
+      boxShadow: getBoxShadow([
+        { type: "DROP_SHADOW", visible: true, radius: 6, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 4 }, spread: -4, blendMode: "NORMAL", showShadowBehindNode: false },
+        { type: "DROP_SHADOW", visible: true, radius: 15, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 10 }, spread: -3, blendMode: "NORMAL", showShadowBehindNode: false }
+      ])
+    }}
+  >
+    <div className="relative w-full h-[112px]">
+      <img src={imageSrc} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          background: getLinearGradient(
+            [
+              { color: { r: 0.211532324552536, g: 0.2550295889377594, b: 0.32470521330833435, a: 1 }, position: 0 },
+              { color: { r: 0.11697349697351456, g: 0.1607542783021927, b: 0.22201550006866455, a: 1 }, position: 1 },
+            ],
+            [[0.5, 0.5, 0], [-0.25, 0.25, 0.5]]
+          )
+        }}
+      />
+      <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/20 flex items-center justify-center"
+           aria-label={`Play ${title}`}
+      >
+        <PlayIcon color={colors['color-1']} />
+      </button>
     </div>
-    <div className="p-3 flex flex-col flex-grow">
-      <p className={`${typographyClasses['paragraph-base']} text-white mb-[4px]`}>{title}</p>
-      <div className="flex items-center justify-between text-[${designColors.grayText}] text-xs leading-4">
-        <span className={`${typographyClasses['paragraph-small']} text-[${designColors.grayText}]`}>{category}</span>
+    <div className="flex flex-col p-3 gap-1 w-full h-[64px]">
+      <h4 style={getTypographyStyle('body-text', { fontSize: '16px', lineHeight: '20px', color: colors['color-1'], fontWeight: '500' })}>
+        {title}
+      </h4>
+      <div className="flex items-center gap-1.5" style={getTypographyStyle('text-sm-medium', {fontWeight: '400', fontSize: '14px', lineHeight: '16px'})}>
+        <span>{category}</span>
+        <span>•</span>
         <div className="flex items-center gap-1">
-          {showClockIcon && <ClockIcon className="w-[12px] h-[12px] text-[${designColors.grayText}]" />}
-          <span className={`${typographyClasses['paragraph-small']} text-[${designColors.grayText}]`}>
-            {episodesOrDuration}
-          </span>
+          <ClockIcon color={colors['color-7']} />
+          <span>{metadata}</span>
         </div>
       </div>
     </div>
@@ -440,80 +401,75 @@ const ContentCard: React.FC<ContentCardProps> = ({
 );
 
 interface CurrentPlanCardProps {
+  icon: React.ReactNode;
   title: string;
-  price: string;
+  monthlyFee: string;
   status: 'Active' | 'Expiring';
-  channels?: string;
-  speed?: string;
-  billDue?: string;
-  validUntil?: string;
+  statusBgColor: string;
+  statusTextColor: string;
+  details: { label: string; value: string }[];
+  showPayBillButton?: boolean;
 }
 
 const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({
+  icon,
   title,
-  price,
+  monthlyFee,
   status,
-  channels,
-  speed,
-  billDue,
-  validUntil,
+  statusBgColor,
+  statusTextColor,
+  details,
+  showPayBillButton = false,
 }) => (
-  <div className="flex flex-col gap-4 p-4 border border-[${designColors.grayBorder}] rounded-[16px] shadow-[0px_1px_2px_-1px_rgba(0,0,0,0.1),_0px_1px_3px_0px_rgba(0,0,0,0.1)] min-w-[280px] flex-shrink-0">
-    <div className="flex justify-between items-start">
+  <div className="flex flex-col flex-shrink-0 w-[280px] h-[258px] bg-color-1 border border-color-8 rounded-2xl p-4 gap-4"
+    style={{
+      boxShadow: getBoxShadow([
+        { type: "DROP_SHADOW", visible: true, radius: 2, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 1 }, spread: -1, blendMode: "NORMAL", showShadowBehindNode: false },
+        { type: "DROP_SHADOW", visible: true, radius: 3, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 1 }, spread: 0, blendMode: "NORMAL", showShadowBehindNode: false }
+      ])
+    }}
+  >
+    <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="w-[48px] h-[48px] rounded-[14px] bg-[${designColors.lightBlueBackground}] flex items-center justify-center">
-          <WifiIcon className="w-8 h-8 text-[${designColors.bluePrimary}]" />
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-color-6">
+          {icon}
         </div>
-        <div className="flex flex-col">
-          <h3 className={`${typographyClasses['heading-3']} text-[${designColors.darkBlue}]`}>{title}</h3>
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>{price}</p>
+        <div className="flex flex-col w-[136px]">
+          <h4 style={getTypographyStyle('heading-main', { fontSize: '16px', lineHeight: '24px', color: colors['color-2'] })}>
+            {title}
+          </h4>
+          <p style={getTypographyStyle('body-text', { fontSize: '14px', lineHeight: '20px', color: colors['color-3'] })}>
+            {monthlyFee}
+          </p>
         </div>
       </div>
-      <span
-        className={`px-2 py-1 rounded-full ${typographyClasses['paragraph-small']} font-medium
-          ${status === 'Active' ? `bg-[${designColors.lightGreenBackground}] text-[${designColors.greenPrimary}]` : `bg-[${designColors.warningYellow}] text-[${designColors.warningYellowText}]`}
-        `}
-      >
+      <div className="px-2.5 py-1 rounded-full text-center" style={{ backgroundColor: statusBgColor, color: statusTextColor, ...getTypographyStyle('text-sm-medium', {fontSize: '14px'})}}>
         {status}
-      </span>
+      </div>
     </div>
 
-    <div className="border-t border-[${designColors.grayBorder}] pt-4 flex flex-col gap-2">
-      {channels && (
-        <div className="flex justify-between items-center">
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>Channels</p>
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.darkBlue}]`}>{channels}</p>
+    <div className="flex flex-col gap-2.5 w-full pt-4 border-t border-color-8">
+      {details.map((detail, index) => (
+        <div key={index} className="flex justify-between items-center w-full">
+          <span style={getTypographyStyle('body-text', { fontSize: '14px', lineHeight: '20px', color: colors['color-3'] })}>
+            {detail.label}
+          </span>
+          <span style={getTypographyStyle('body-text', { fontSize: '14px', lineHeight: '20px', color: colors['color-2'] })}>
+            {detail.value}
+          </span>
         </div>
-      )}
-      {speed && (
-        <div className="flex justify-between items-center">
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>Speed</p>
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.darkBlue}]`}>{speed}</p>
-        </div>
-      )}
-      {billDue && (
-        <div className="flex justify-between items-center">
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>Bill Due</p>
-          <p className={`${typographyClasses.paragraph-base} text-[${designColors.errorRed}]`}>{billDue}</p>
-        </div>
-      )}
-      {validUntil && (
-        <div className="flex justify-between items-center">
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>Valid Until</p>
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.darkBlue}]`}>{validUntil}</p>
-        </div>
-      )}
+      ))}
     </div>
 
-    <div className="flex gap-2 mt-auto">
-      <button className={`flex-1 px-4 py-2 bg-[${designColors.offWhiteBackground}] rounded-[10px] text-[${designColors.darkBlue}] ${typographyClasses['paragraph-base']} font-medium`}>
+    <div className="flex gap-2.5 w-full">
+      <button className={`flex-1 px-4 py-2.5 rounded-lg bg-color-8`} style={getTypographyStyle('text-base-medium', { color: colors['color-2'], lineHeight: '20px' })}>
         Manage
       </button>
-      <button className={`flex-1 px-4 py-2 bg-[${designColors.bluePrimary}] rounded-[10px] text-white ${typographyClasses['paragraph-base']} font-medium`}>
+      <button className={`flex-1 px-4 py-2.5 rounded-lg bg-color-5 text-color-1`} style={getTypographyStyle('text-base-medium', { color: colors['color-1'], lineHeight: '20px' })}>
         Upgrade
       </button>
-      {billDue && (
-        <button className={`flex-1 px-4 py-2 bg-[${designColors.greenPrimary}] rounded-[10px] text-white ${typographyClasses['paragraph-base']} font-medium`}>
+      {showPayBillButton && (
+        <button className={`flex-1 px-4 py-2.5 rounded-lg bg-color-10 text-color-1`} style={getTypographyStyle('text-base-medium', { color: colors['color-1'], lineHeight: '20px' })}>
           Pay Bill
         </button>
       )}
@@ -521,519 +477,16 @@ const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({
   </div>
 );
 
-interface FaqItemProps {
+interface HelpDetailItemProps {
   question: string;
   answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-const FaqItem: React.FC<FaqItemProps> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="bg-white rounded-[14px] border border-[${designColors.grayBorder}] shadow-[0_1px_2px_-1px_rgba(0,0,0,0.1),_0_1px_3px_0_rgba(0,0,0,0.1)] overflow-hidden w-full">
-      <button
-        className="flex justify-between items-center w-full p-4 text-left"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-expanded={isOpen}
-      >
-        <p className={`${typographyClasses['paragraph-base']} text-[${designColors.darkBlue}]`}>{question}</p>
-        <ChevronRightIcon className={`w-4 h-4 text-[${designColors.mediumGrayText}] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
-      </button>
-      {isOpen && (
-        <div className="px-4 pb-4">
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>{answer}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-
-// --- Main Component ---
-
-interface ChatbotTourPageProps {
-  // Props for the main page component can be defined here if needed.
-  // For this exercise, data is internal to simulate rendering from JSON.
-}
-
-const ChatbotTourPage: React.FC<ChatbotTourPageProps> = () => {
-  const [currentCarouselSlide, setCurrentCarouselSlide] = useState(0);
-
-  const carouselItems = [
-    {
-      id: '2:5054',
-      imageSrc: 'https://via.placeholder.com/376x256/000000/FFFFFF?text=Action+Movies',
-      title: 'New Release: Action Movies Marathon',
-      description: 'Stream the latest blockbusters',
-    },
-    {
-      id: '2:5062',
-      imageSrc: 'https://via.placeholder.com/376x256/000000/FFFFFF?text=Premier+League',
-      title: 'Live Sports: Premier League',
-      description: 'Watch your favorite teams live',
-    },
-    {
-      id: '2:5070',
-      imageSrc: 'https://via.placeholder.com/376x256/000000/FFFFFF?text=Breaking+News',
-      title: 'Breaking News Coverage',
-      description: '24/7 news and updates',
-    },
-  ];
-
-  return (
-    <div className="relative w-[376px] min-h-[2786px] bg-white overflow-hidden font-inter">
-      {/* TopBar */}
-      <div className="sticky top-0 left-0 w-full h-[64.57px] bg-white border-b border-[${designColors.grayBorder}] flex items-center px-4 z-10">
-        <div className="flex items-center gap-[12px]">
-          <div
-            className="w-[40px] h-[40px] rounded-full flex items-center justify-center"
-            style={{
-              background: `linear-gradient(135deg, ${designColors.bluePrimary} 0%, ${designColors.blueGradientEnd} 100%)`,
-            }}
-          >
-            <span className={`text-white ${typographyClasses['paragraph-base']} font-medium`}>C1</span>
-          </div>
-          <h1 className={`${typographyClasses['heading-1']} text-[${designColors.darkBlue}]`}>Cignal One</h1>
-        </div>
-        <div className="ml-auto flex items-center gap-[8px]">
-          <button className="relative w-[36px] h-[36px] rounded-full flex items-center justify-center" aria-label="Notifications">
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[${designColors.redDot}] absolute top-1 right-1" />
-            {/* Placeholder for bell icon */}
-            <Image src="/bell-icon.svg" alt="Notifications" width={20} height={20} />
-          </button>
-          <button className="w-[36px] h-[36px] rounded-full flex items-center justify-center" aria-label="User Profile">
-            <UserIcon className="w-5 h-5 text-[${designColors.lightGrayText}]" />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="bg-[${designColors.offWhiteBackground}] min-h-[calc(100vh-64.57px)] pb-[80px]">
-        {/* Main Hero Carousel */}
-        <div className="relative w-full h-[256px]">
-          {carouselItems.map((item, index) => (
-            <div
-              key={item.id}
-              className={`absolute inset-0 transition-opacity duration-300 ${
-                index === currentCarouselSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              <Image
-                src={item.imageSrc}
-                alt={item.title}
-                fill
-                className="object-cover"
-                priority={index === 0}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6">
-                <h2 className={`${typographyClasses['heading-1']} text-white leading-[30px]`}>
-                  {item.title}
-                </h2>
-                <p className={`${typographyClasses['paragraph-base']} text-white/90`}>
-                  {item.description}
-                </p>
-              </div>
-            </div>
-          ))}
-          <div className="absolute bottom-4 right-6 flex gap-2">
-            {carouselItems.map((_, index) => (
-              <button
-                key={index}
-                className={`w-[8px] h-[8px] rounded-full transition-all duration-300 ${
-                  index === currentCarouselSlide ? 'w-6 bg-white' : 'bg-white/50'
-                }`}
-                onClick={() => setCurrentCarouselSlide(index)}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Content sections below carousel, adjusted to visually overlap slightly */}
-        <div className="mt-[-57.07px] relative z-[1]">
-          {/* Current Plans Section */}
-          <div className="bg-white pt-4 pb-6 border-b border-[${designColors.grayBorder}] z-10 relative">
-            <div className="flex justify-between items-start px-4">
-              <div className="flex flex-col">
-                <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Current Plans</h2>
-                <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>
-                  Manage your active subscriptions
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button className="w-[33px] h-[33px] rounded-[10px] border border-[${designColors.grayBorder}] flex items-center justify-center" aria-label="Previous Plan">
-                  <ChevronRightIcon className="w-4 h-4 text-[${designColors.lightGrayText}] rotate-180" />
-                </button>
-                <button className="w-[33px] h-[33px] rounded-[10px] border border-[${designColors.grayBorder}] flex items-center justify-center" aria-label="Next Plan">
-                  <ChevronRightIcon className="w-4 h-4 text-[${designColors.lightGrayText}]" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-4 px-4 pt-6 overflow-x-auto scrollbar-hide">
-              <CurrentPlanCard
-                title="Cignal Postpaid Premium"
-                price="₱1,899/month"
-                status="Active"
-                channels="200+"
-                billDue="Dec 15, 2025"
-              />
-              <CurrentPlanCard
-                title="Cignal Fiber 100 Mbps"
-                price="₱1,699/month"
-                status="Active"
-                speed="100 Mbps"
-                validUntil="Dec 31, 2025"
-              />
-              <CurrentPlanCard
-                title="Cignal Play Unlimited"
-                price="₱399/month"
-                status="Expiring"
-                channels="50+"
-                validUntil="Jan 5, 2026"
-              />
-              <CurrentPlanCard
-                title="Cignal Fiber 200 Mbps"
-                price="₱2,499/month"
-                status="Active"
-                speed="200 Mbps"
-                validUntil="Mar 15, 2026"
-              />
-            </div>
-          </div>
-
-          {/* Your Apps Section */}
-          <div className="bg-white pt-4 pb-6 mt-4">
-            <div className="flex justify-between items-start px-4">
-              <div className="flex flex-col">
-                <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Your Apps</h2>
-                <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>
-                  Manage your subscriptions
-                </p>
-              </div>
-              <Link href="/apps" className="flex items-center text-[${designColors.bluePrimary}]" aria-label="View All Apps">
-                <span className={`${typographyClasses['paragraph-base']} font-medium`}>View All</span>
-                <ChevronRightIcon className="ml-1 w-4 h-4 text-[${designColors.bluePrimary}]" />
-              </Link>
-            </div>
-
-            <div className="flex gap-4 px-4 pt-6 overflow-x-auto scrollbar-hide">
-              <AppCard
-                title="Cignal Postpaid"
-                description="Premium TV experience"
-                gradientStart={designColors.blueGradientStart1}
-                gradientEnd={designColors.blueGradientEnd}
-                icon={<TVIcon className="w-12 h-12 stroke-white" />}
-              />
-              <AppCard
-                title="Cignal Prepaid"
-                description="Flexible TV plans"
-                gradientStart={designColors.blueGradientStart2}
-                gradientEnd={designColors.blueGradientEnd}
-                icon={<TVIcon className="w-12 h-12 stroke-white" />}
-              />
-              <AppCard
-                title="SatLite"
-                description="Mobile streaming"
-                gradientStart={designColors.pinkGradientStart}
-                gradientEnd={designColors.pinkGradientEnd}
-                icon={<Image src="/phone-icon.svg" alt="SatLite" width={48} height={48} className="stroke-white" />}
-              />
-              <AppCard
-                title="Pilipinas Live"
-                description="Local channels"
-                gradientStart={designColors.greenGradientStart}
-                gradientEnd={designColors.greenGradientEnd}
-                icon={<Image src="/live-tv-icon.svg" alt="Pilipinas Live" width={48} height={48} className="stroke-white" />}
-              />
-              <div className="flex flex-col items-center justify-center p-4 rounded-[14px] border border-[${designColors.grayBorder}] w-[128px] h-[172px] flex-shrink-0">
-                <PlusIcon className="w-6 h-6 text-[${designColors.lighterGray}] mb-2" />
-                <p className={`${typographyClasses['paragraph-small']} text-[${designColors.lighterGray}]`}>Cignal Super</p>
-              </div>
-            </div>
-          </div>
-
-          {/* My Wallet Section */}
-          <div
-            className="flex flex-col gap-4 p-6 mt-4"
-            style={{
-              background: `linear-gradient(135deg, ${designColors.bluePrimary} 0%, ${designColors.blueGradientEnd} 100%)`,
-            }}
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                  <WalletIcon className="w-6 h-6" />
-                </div>
-                <div className="flex flex-col">
-                  <p className={`${typographyClasses['paragraph-base']} text-white/90`}>My Wallet</p>
-                  <h3 className={`${typographyClasses['heading-3']} text-white`}>2,450 Points</h3>
-                </div>
-              </div>
-              <button className="flex items-center px-4 py-2 bg-white/20 rounded-lg text-white ${typographyClasses['paragraph-base']} font-medium" aria-label="View Wallet">
-                <span>View Wallet</span>
-                <ChevronRightIcon className="ml-2 w-4 h-4 text-white" />
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide">
-              <div className="bg-white/10 rounded-[14px] p-4 flex-col justify-between items-start w-[166px] h-[104px] flex-shrink-0">
-                <StarIcon className="w-5 h-5 stroke-[#FFDE20] mb-2" />
-                <p className={`${typographyClasses['paragraph-base']} text-white/90`}>Available</p>
-                <p className={`${typographyClasses['heading-3']} text-white`}>2,450 pts</p>
-              </div>
-              <div className="bg-white/10 rounded-[14px] p-4 flex-col justify-between items-start w-[166px] h-[104px] flex-shrink-0">
-                <StarIcon className="w-5 h-5 stroke-[#f6339a] mb-2" /> {/* Inferred pink color */}
-                <p className={`${typographyClasses['paragraph-base']} text-white/90`}>Rewards</p>
-                <p className={`${typographyClasses['heading-3']} text-white`}>15 Available</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Entertainment Carousel */}
-          <div className="bg-white pt-4 pb-6 mt-4">
-            <div className="flex justify-between items-start px-4">
-              <div className="flex flex-col">
-                <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Entertainment</h2>
-                <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>
-                  Popular shows and series
-                </p>
-              </div>
-              <Link href="/entertainment" className="flex items-center text-[${designColors.bluePrimary}]" aria-label="See All Entertainment">
-                <span className={`${typographyClasses['paragraph-base']} font-medium`}>See All</span>
-                <ChevronRightIcon className="ml-1 w-4 h-4 text-[${designColors.bluePrimary}]" />
-              </Link>
-            </div>
-
-            <div className="flex gap-4 px-4 pt-6 overflow-x-auto scrollbar-hide">
-              <ContentCard
-                imageSrc="/drama-series.svg" // Placeholder, actual image not provided
-                title="The Latest Drama Series"
-                category="Drama"
-                episodesOrDuration="8 Episodes"
-              />
-              <ContentCard
-                imageSrc="/comedy-night.svg"
-                title="Comedy Night Special"
-                category="Comedy"
-                episodesOrDuration="2h 15m"
-                showClockIcon={true}
-              />
-              <ContentCard
-                imageSrc="/reality-show.svg"
-                title="Reality Show Finale"
-                category="Reality"
-                episodesOrDuration="Season 5"
-                showClockIcon={false}
-              />
-              <ContentCard
-                imageSrc="/documentary.svg"
-                title="Documentary: Nature"
-                category="Documentary"
-                episodesOrDuration="1h 45m"
-                showClockIcon={true}
-              />
-            </div>
-          </div>
-
-          {/* Movies Carousel */}
-          <div className="bg-white pt-4 pb-6 mt-4">
-            <div className="flex justify-between items-start px-4">
-              <div className="flex flex-col">
-                <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Movies</h2>
-                <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>
-                  Blockbusters and classics
-                </p>
-              </div>
-              <Link href="/movies" className="flex items-center text-[${designColors.bluePrimary}]" aria-label="See All Movies">
-                <span className={`${typographyClasses['paragraph-base']} font-medium`}>See All</span>
-                <ChevronRightIcon className="ml-1 w-4 h-4 text-[${designColors.bluePrimary}]" />
-              </Link>
-            </div>
-
-            <div className="flex gap-4 px-4 pt-6 overflow-x-auto scrollbar-hide">
-              <ContentCard
-                imageSrc="/action-thriller.svg"
-                title="Action Thriller 2024"
-                category="Action"
-                episodesOrDuration="2h 30m"
-                showClockIcon={true}
-              />
-              <ContentCard
-                imageSrc="/romantic-comedy.svg"
-                title="Romantic Comedy"
-                category="Romance"
-                episodesOrDuration="1h 55m"
-                showClockIcon={true}
-              />
-              <ContentCard
-                imageSrc="/sci-fi-adventure.svg"
-                title="Sci-Fi Adventure"
-                category="Sci-Fi"
-                episodesOrDuration="2h 45m"
-                showClockIcon={true}
-              />
-              <ContentCard
-                imageSrc="/horror-mystery.svg"
-                title="Horror Mystery"
-                category="Horror"
-                episodesOrDuration="1h 40m"
-                showClockIcon={true}
-              />
-            </div>
-          </div>
-
-          {/* Sports & Live Events Carousel */}
-          <div className="bg-white pt-4 pb-6 mt-4">
-            <div className="flex justify-between items-start px-4">
-              <div className="flex flex-col">
-                <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Sports & Live Events</h2>
-                <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}]`}>
-                  Watch your favorite sports
-                </p>
-              </div>
-              <Link href="/sports" className="flex items-center text-[${designColors.bluePrimary}]" aria-label="See All Sports">
-                <span className={`${typographyClasses['paragraph-base']} font-medium`}>See All</span>
-                <ChevronRightIcon className="ml-1 w-4 h-4 text-[${designColors.bluePrimary}]" />
-              </Link>
-            </div>
-
-            <div className="flex gap-4 px-4 pt-6 overflow-x-auto scrollbar-hide">
-              <ContentCard
-                imageSrc="/nba-finals.svg"
-                title="NBA Finals Game 7"
-                category="Basketball"
-                episodesOrDuration="Live"
-                showClockIcon={false}
-              />
-              <ContentCard
-                imageSrc="/premier-league.svg"
-                title="Premier League Match"
-                category="Football"
-                episodesOrDuration="Today 8PM"
-                showClockIcon={false}
-              />
-              <ContentCard
-                imageSrc="/tennis-grand-slam.svg"
-                title="Tennis Grand Slam"
-                category="Tennis"
-                episodesOrDuration="Live Now"
-                showClockIcon={false}
-              />
-              <ContentCard
-                imageSrc="/ufc-fight.svg"
-                title="UFC Fight Night"
-                category="MMA"
-                episodesOrDuration="This Weekend"
-                showClockIcon={false}
-              />
-            </div>
-          </div>
-
-          {/* Help & Support Section */}
-          <div className="bg-[${designColors.offWhiteBackground}] pt-6 pb-6 mt-4">
-            <div className="flex items-center gap-2 px-4 mb-4">
-              <HelpIcon className="w-6 h-6 text-[${designColors.darkBlue}]" />
-              <h2 className={`${typographyClasses['heading-2']} text-[${designColors.darkBlue}]`}>Help & Support</h2>
-            </div>
-            <div className="flex border-b border-[${designColors.grayBorder}] px-4 pb-2">
-              <button className="py-2 px-4 border-b-2 border-[${designColors.bluePrimary}] text-[${designColors.bluePrimary}] ${typographyClasses['paragraph-base']} font-medium">
-                FAQs
-              </button>
-              <button className="py-2 px-4 text-[${designColors.lightGrayText}] ${typographyClasses['paragraph-base']} font-medium">Diagnostics</button>
-            </div>
-
-            <div className="px-4 py-4 flex flex-col gap-3">
-              <FaqItem
-                question="How do I upgrade my subscription?"
-                answer="Go to your Current Plans section, select the plan you wish to upgrade, and follow the prompts. You can also contact our customer support for assistance."
-              />
-              <FaqItem
-                question="What payment methods are accepted?"
-                answer="We accept credit cards, debit cards, GCash, PayMaya, and bank transfers. For more details, please visit our payment options page."
-              />
-              <FaqItem
-                question="Can I pause my subscription?"
-                answer="Yes, you can pause prepaid subscriptions. For postpaid subscriptions, please contact customer support for available options."
-              />
-            </div>
-            <button className={`w-[344px] px-4 py-3 mx-4 mt-4 text-[${designColors.darkBlue}] bg-white border border-[${designColors.grayBorder}] rounded-[14px] ${typographyClasses['paragraph-base']} font-medium`}>
-              View All FAQs
-            </button>
-
-            <div className={`bg-[${designColors.lightBlueBackground}] border border-[${designColors.lightBlueBorder}] rounded-[14px] p-4 mx-4 mt-6 flex flex-col gap-2`}>
-              <p className={`${typographyClasses['paragraph-base']} text-[${designColors.darkBlue}]`}>Still need help?</p>
-              <div className="flex gap-2">
-                <button className={`flex-1 px-4 py-2 bg-white border border-[${designColors.lightBlueBorder}] rounded-lg text-[${designColors.bluePrimary}] ${typographyClasses['paragraph-base']} font-medium`}>
-                  Call Support
-                </button>
-                <button className={`flex-1 px-4 py-2 bg-[${designColors.bluePrimary}] rounded-lg text-white ${typographyClasses['paragraph-base']} font-medium`}>
-                  Chat with Us
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ChatBot Floating Button */}
-      <button className={`fixed bottom-[140px] right-6 w-14 h-14 rounded-full flex items-center justify-center bg-[${designColors.blueAccent}] shadow-lg z-20`} aria-label="Open Chatbot">
-        <ChatbotIcon className="w-6 h-6" />
-      </button>
-
-      {/* Bottom Navigation */}
-      <div className={`fixed bottom-0 left-0 w-full h-[64.55px] bg-white border-t border-[${designColors.grayBorder}] flex justify-around items-center px-2 z-10`}>
-        <button className="flex flex-col items-center gap-[4px] py-2 w-[65px]" aria-label="Home">
-          <HomeIcon className="w-5 h-5 text-[${designColors.bluePrimary}]" />
-          <span className={`${typographyClasses['paragraph-small']} text-[${designColors.bluePrimary}]`}>Home</span>
-        </button>
-        <button className="flex flex-col items-center gap-[4px] py-2 w-[110px]" aria-label="Subscriptions">
-          <SubscriptionIcon className="w-5 h-5 text-[${designColors.lightGrayText}]" />
-          <span className={`${typographyClasses['paragraph-small']} text-[${designColors.lightGrayText}]`}>Subscriptions</span>
-        </button>
-        <button className="flex flex-col items-center gap-[4px] py-2 w-[80px]" aria-label="Help">
-          <HelpIcon className="w-5 h-5 text-[${designColors.lightGrayText}]" />
-          <span className={`${typographyClasses['paragraph-small']} text-[${designColors.lightGrayText}]`}>Help</span>
-        </button>
-        <button className="relative flex flex-col items-center gap-[4px] py-2 w-[68px]" aria-label="Profile">
-          <span className="absolute top-1 right-2 w-2 h-2 bg-[${designColors.redDot}] rounded-full" />
-          <UserIcon className="w-5 h-5 text-[${designColors.lightGrayText}]" />
-          <span className={`${typographyClasses['paragraph-small']} text-[${designColors.lightGrayText}]`}>Profile</span>
-        </button>
-      </div>
-
-      {/* Overlay for Chatbot Tour */}
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-30">
-        <div className="bg-white rounded-[14px] p-6 mx-7 w-[320px] shadow-2xl flex flex-col items-start relative">
-          <p className={`${typographyClasses['paragraph-small']} text-[${designColors.bluePrimary}] mb-2`}>Step 2 of 4</p>
-          <h3 className={`${typographyClasses['heading-3']} text-[${designColors.darkBlue}] mb-2`}>AI Chatbot Assistant</h3>
-          <p className={`${typographyClasses['paragraph-base']} text-[${designColors.lightGrayText}] mb-6`}>
-            Get instant help with our AI chatbot. Ask questions, troubleshoot issues, and find solutions 24/7.
-          </p>
-          <div className="flex justify-between items-center w-full mb-4">
-            <div className="flex gap-1">
-              <div className="w-[6px] h-[6px] rounded-full bg-[${designColors.lighterGray}]" />
-              <div className="w-[24px] h-[6px] rounded-full bg-[${designColors.bluePrimary}]" />
-              <div className="w-[6px] h-[6px] rounded-full bg-[${designColors.lighterGray}]" />
-              <div className="w-[6px] h-[6px] rounded-full bg-[${designColors.lighterGray}]" />
-            </div>
-            <div className="flex gap-2">
-              <button className={`flex items-center px-4 py-2 border border-[${designColors.grayBorder}] rounded-[8px] text-[${designColors.darkBlue}] ${typographyClasses['paragraph-base']} font-medium`} aria-label="Back">
-                <ChevronRightIcon className="rotate-180 w-4 h-4 mr-2 text-[${designColors.darkBlue}]" />
-                Back
-              </button>
-              <button className={`flex items-center px-4 py-2 bg-[${designColors.bluePrimary}] rounded-[8px] text-white ${typographyClasses['paragraph-base']} font-medium`} aria-label="Next">
-                Next
-                <ChevronRightIcon className="ml-2 w-4 h-4 text-white" />
-              </button>
-            </div>
-          </div>
-          <button className="absolute top-4 right-4 text-[${designColors.mediumGrayText}]" aria-label="Close">
-            {/* Placeholder for close icon */}
-            <Image src="/close-icon.svg" alt="Close" width={20} height={20} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default ChatbotTourPage;
+const HelpDetailItem: React.FC<HelpDetailItemProps> = ({ question, answer, isOpen, onToggle }) => (
+  <div className="flex flex-col w-full bg-color-1 border border-color-8 rounded-2xl overflow-hidden"
+    style={{
+      boxShadow: getBoxShadow([
+        { type: "DROP_SHADOW", visible: true, radius: 2, color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 1 }, spread: -1, blendMode: "NORMAL", showShadowBehindNode: false },
+        { type: "DROP_SHADOW", visible: true, radius: 3, color:
