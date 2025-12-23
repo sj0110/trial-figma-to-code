@@ -1,887 +1,215 @@
-// Suggested file path: src/app/PayBillPage.tsx
-'use client';
+// components/2-3-tour-pay-bill.tsx
+import React, { useState, useMemo } from 'react';
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+// --- Types & Interfaces ---
 
-// --- Color Palette Mapping ---
-// Based on designData.designSystem.colors and explicit RGB values found in fills/strokes
-// color-1: #ffffff (white)
-// color-2: #101828 (text-gray-900 equivalent, dark text)
-// color-3: #4a5565 (text-gray-600 equivalent, medium text)
-// color-4: #99a1af (text-gray-400 equivalent, light text)
-// color-5: #155dfc (primary blue)
-// color-6: #eff6ff (light blue background)
-// color-7: #6a7282 (gray for icons/secondary text)
-// color-8: #f3f4f6 (light gray background/border)
-// color-9: #dcfce7 (light green background)
-// color-10: #008236 (dark green text)
-
-// Derived from explicit RGB values:
-// rgb(0.976, 0.980, 0.984) -> #f9fafc (app background)
-// rgb(0.819, 0.835, 0.861) -> #d0d5dd (border color)
-// rgb(0.906, 0, 0.042) -> #e7000b (red text for amount due)
-// rgb(0.791, 0.207, 0) -> #c93500 (orange text for expiring status)
-// rgb(0.077, 0.279, 0.901) -> #1447e6 (Call support button text)
-
-// --- Typography Mapping ---
-// Font family: Inter is typically the default in Next.js/Tailwind setups.
-// 16px, 400 weight, 24px line height, -0.3125px letter spacing -> text-base font-normal leading-6 tracking-[-0.3125px]
-// 20px, 500 weight, 30px line height, -0.44921875px letter spacing -> text-xl font-medium leading-[30px] tracking-[-0.44921875px]
-// Additional sizes:
-// 36px (h1) -> text-[36px] font-medium leading-[normal] tracking-[-0.78px]
-// 30px (h2) -> text-[30px] font-medium leading-[normal] tracking-[-0.66px]
-
-// --- Placeholder Images ---
-const IMAGE_PLACEHOLDERS: Record<string, string> = {
-  '4eda220f49efdbb1ad4b1a5c9ead0b901dc88c43': 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Action Movies Marathon
-  'f4601d3391337eed910f0c51a0cffe14718ee87a': 'https://images.unsplash.com/photo-1579952363873-ce070a41aab0?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Premier League
-  '8a6558968e08468118b791792df41cb25d126728': 'https://images.unsplash.com/photo-1504711434969-e63a80787e71?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', // Breaking News
-  // Default placeholder if hash not found, or for items within carousels
-  'default': 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=2012&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
-};
-
-const getImageUrl = (hash: string) => IMAGE_PLACEHOLDERS[hash] || IMAGE_PLACEHOLDERS.default;
-
-// --- SVG Icon Components ---
-// Extracted manually from design data based on `Vector` children within `Icon` frames.
-
-const IconArrowRight = ({ className = 'w-4 h-4', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 10 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M1.33276 1.33203L8.00003 7.9993L1.33276 14.6666"
-      stroke={stroke}
-      strokeWidth="1.33333"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconTV = ({ className = 'w-12 h-12', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 40 40"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M14 4V14L34 14V4H14Z"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 14V34L40 34V14H4Z"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconMobileStreaming = ({ className = 'w-12 h-12', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M14 4V14L34 14V4H14Z"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 14V34L44 34V14H4Z"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconMobilePhone = ({ className = 'w-12 h-12', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M10 4V44H38V4H10Z"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M24 36V36"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconWifi = ({ className = 'w-12 h-12', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 48 48"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M4 4C18.6667 4 29.3333 4 44 4"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M16 24L32 24"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 24L44 24"
-      stroke={stroke}
-      strokeWidth="4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconPlay = ({ className = 'w-[7.5px] h-[11.6px]', fill = 'white' }: { className?: string, fill?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 8 12"
-    fill={fill}
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M0.569458 0.176086L7.56828 6.00021L0.569458 11.6443V0.176086Z"
-      fill={fill}
-    />
-  </svg>
-);
-
-const IconClock = ({ className = 'w-3 h-3', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 12 12"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M6.00003 3.00001V7.00001"
-      stroke={stroke}
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M1.00003 1.00001L11 1.00001L11 11.00001L1.00003 11.00001L1.00003 1.00001Z"
-      stroke={stroke}
-      strokeWidth="1"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconHome = ({ className = 'w-5 h-5', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M7.5 10L12.5 10"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M2.5 1.66602L17.5 1.66602L17.5 16.666L2.5 16.666L2.5 1.66602Z"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconSubscriptions = ({ className = 'w-5 h-5', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M2.5 4.16602L17.5 4.16602L17.5 15.8327L2.5 15.8327L2.5 4.16602Z"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M2.5 8.33203L17.5 8.33203"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconHelp = ({ className = 'w-5 h-5', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M1.66602 1.66602L18.3327 1.66602L18.3327 18.3327L1.66602 18.3327L1.66602 1.66602Z"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconProfile = ({ className = 'w-5 h-5', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M4.16602 12.5C4.16602 10.3333 7.08268 8.33333 9.99935 8.33333C12.916 8.33333 15.8327 10.3333 15.8327 12.5"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M6.66602 2.5L13.3327 2.5C13.3327 2.5 13.3327 7.5 9.99935 7.5C6.66602 7.5 6.66602 2.5 6.66602 2.5Z"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconNotification = ({ className = 'w-5 h-5', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 20 20"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M1.66602 1.66602L18.3327 1.66602L18.3327 18.3327L1.66602 18.3327L1.66602 1.66602Z"
-      stroke={stroke}
-      strokeWidth="1.66667"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconQuestionMark = ({ className = 'w-6 h-6', stroke = '#364153' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M1.94802 1.94795L21.4266 1.94795L21.4266 21.4265L1.94802 21.4265L1.94802 1.94795Z"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M8.85299 6.81342C8.85299 6.81342 15.5314 6.81342 14.5314 12.6618C14.5314 12.6618 13.5314 11.6618 11.6871 11.6618C10.597 11.6618 9.99701 10.9951 9.99701 9.99511"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M11.6871 16.5568V16.5568"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconNoWifi = ({ className = 'w-6 h-6', stroke = '#155dfc' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M11.687 19.4787V19.4787"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M1.94778 4.87011L21.4264 4.87011L21.4264 8.59018"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4.86957 9.73997L18.5046 9.73997L19.4786 12.5242"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M8.27823 14.6086L15.9082 14.6086"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconNoTV = ({ className = 'w-6 h-6', stroke = '#155dfc' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M6.81741 1.94795L16.5574 1.94795L16.5574 6.81756L6.81741 6.81756L6.81741 1.94795Z"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M1.94779 6.81756L21.4264 6.81756L21.4264 21.4262L1.94779 21.4262L1.94779 6.81756Z"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconReset = ({ className = 'w-6 h-6', stroke = '#155dfc' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M2.96448 1.96468L20.4102 1.96468L20.4102 21.4093L2.96448 21.4093L2.96448 1.96468Z"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M8.76534 8.76495C8.76534 8.76495 14.6085 8.76495 14.6085 14.6081C14.6085 14.6081 13.6085 13.6081 11.6871 13.6081C10.597 13.6081 9.99701 12.9414 9.99701 11.9414"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconPhone = ({ className = 'w-6 h-6', stroke = '#155dfc' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M1.94791 1.94788L21.4265 1.94788L21.4265 21.4265L1.94791 21.4265L1.94791 1.94788Z"
-      stroke={stroke}
-      strokeWidth="1.94786"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconChat = ({ className = 'w-6 h-6', stroke = 'currentColor' }: { className?: string, stroke?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M2.00031 2.00031L22.0003 2.00031L22.0003 22.0003L2.00031 22.0003L2.00031 2.00031Z"
-      stroke={stroke}
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-interface TopBarProps {
-  appName: string;
-  notificationsCount: number;
+interface TourPayBillScreenProps {
+  // Define any top-level props if needed for the screen, e.g., userId, theme, etc.
 }
 
-const TopBar: React.FC<TopBarProps> = ({ appName, notificationsCount }) => {
-  return (
-    <header className="flex h-[64.57px] w-full items-center justify-between border-b border-[#d0d5dd] bg-white px-4 sticky top-0 z-10">
-      <div className="flex items-center space-x-3">
-        <div
-          className="flex h-[40px] w-[40px] items-center justify-center rounded-full"
-          style={{ background: 'linear-gradient(216deg, #155dfc 0%, #4f39f6 100%)' }}
-        >
-          <span className="text-white text-xl font-medium leading-[30px] tracking-[-0.44921875px]">C1</span>
-        </div>
-        <h1 className="text-[36px] font-medium leading-[normal] tracking-[-0.78px] text-[#101828]">
-          {appName}
-        </h1>
-      </div>
-      <div className="flex items-center space-x-4">
-        <button aria-label="Notifications" className="relative">
-          <IconNotification className="w-5 h-5" stroke="#364153" />
-          {notificationsCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-2 w-2 items-center justify-center rounded-full bg-red-500 text-xs text-white"></span>
-          )}
-        </button>
-        <button aria-label="Profile">
-          <IconProfile className="w-5 h-5" stroke="#364153" />
-        </button>
-      </div>
-    </header>
-  );
-};
+interface FigmaColor {
+  r: number;
+  g: number;
+  b: number;
+  a?: number;
+}
 
 interface AppCardProps {
-  gradientColors: { start: string; end: string; };
-  icon: React.ReactNode;
+  iconPaths: { d: string; fill?: string; stroke?: string; strokeWidth?: number }[];
+  gradientFrom: string;
+  gradientTo: string;
   title: string;
   description: string;
+  textColor: string;
+  descriptionColor: string;
 }
 
-const AppCard: React.FC<AppCardProps> = ({ gradientColors, icon, title, description }) => {
-  const isBorderOnly = gradientColors.start === '#f3f4f6' && gradientColors.end === '#f3f4f6';
-  const backgroundStyle = isBorderOnly
-    ? {}
-    : { background: `linear-gradient(216deg, ${gradientColors.start} 0%, ${gradientColors.end} 100%)` };
-  const borderStyle = isBorderOnly ? { border: '1.75px solid #d0d5dd' } : {};
-
-  return (
-    <div className="flex w-[128px] flex-shrink-0 flex-col items-center gap-2">
-      <div
-        className="flex h-[128px] w-full items-center justify-center rounded-[14px] p-10"
-        style={{ ...backgroundStyle, ...borderStyle, boxShadow: '0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-      >
-        {icon}
-      </div>
-      <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828] text-center max-w-[102px]">
-        {title}
-      </p>
-      <p className="text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#6a7282] text-center max-w-[135px]">
-        {description}
-      </p>
-    </div>
-  );
-};
-
-interface AppsSectionProps {
-  title: string;
-  description: string;
-  viewAllLink: string;
-  apps: AppCardProps[];
-}
-
-const AppsSection: React.FC<AppsSectionProps> = ({ title, description, viewAllLink, apps }) => {
-  return (
-    <section className="bg-white px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-            {title}
-          </h2>
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            {description}
-          </p>
-        </div>
-        <Link href={viewAllLink} className="flex items-center text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
-          View All <IconArrowRight className="ml-1 w-4 h-4" stroke="#155dfc" />
-        </Link>
-      </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {apps.map((app, index) => (
-          <AppCard key={index} {...app} />
-        ))}
-      </div>
-    </section>
-  );
-};
-
-interface WalletPreviewProps {
-  points: number;
-  rewardsAvailable: number;
-  viewWalletLink: string;
-}
-
-const WalletPreview: React.FC<WalletPreviewProps> = ({ points, rewardsAvailable, viewWalletLink }) => {
-  return (
-    <section
-      className="p-6 text-white"
-      style={{ background: 'linear-gradient(216deg, #155dfc 0%, #4f39f6 100%)' }}
-    >
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 8V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 8V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M5 12L19 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7 3L17 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M2.5 1.5H21.5V22.5H2.5V1.5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-
-          </div>
-          <div>
-            <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              My Wallet
-            </p>
-            <h2 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-white">
-              {points.toLocaleString()} Points
-            </h2>
-          </div>
-        </div>
-        <Link href={viewWalletLink} className="flex items-center rounded-lg bg-white/20 px-4 py-2 text-base font-medium text-white">
-          View Wallet <IconArrowRight className="ml-2 w-4 h-4" stroke="white" />
-        </Link>
-      </div>
-
-      <div className="flex justify-between gap-4">
-        <div className="flex-1 rounded-[14px] bg-white/10 p-4">
-          <div className="mb-2 flex items-center">
-            <svg className="w-5 h-5 text-yellow-300" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M1.66629 1.66629L11.664 1.66629L11.664 11.664L1.66629 11.664L1.66629 1.66629Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8.61473 8.63972L18.3242 8.63972L18.3242 18.3492L8.61473 18.3492L8.61473 8.63972Z" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5.83202 4.99888V8.33146" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12.1556 11.5641V14.5051" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <p className="ml-2 text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              Available
-            </p>
-          </div>
-          <h3 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-white">
-            {rewardsAvailable} pts
-          </h3>
-        </div>
-
-        <div className="flex-1 rounded-[14px] bg-white/10 p-4">
-          <div className="mb-2 flex items-center">
-            <svg className="w-5 h-5 text-pink-300" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2.49944 6.66517L17.496 6.66517L17.496 9.99775" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M9.99775 6.66517L9.99775 17.4961" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M4.16573 9.99775L15.8302 9.99775L15.8302 17.4961" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M4.16573 2.49908L15.8302 2.49908" stroke="currentColor" strokeWidth="1.66667" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <p className="ml-2 text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              Rewards
-            </p>
-          </div>
-          <h3 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-white">
-            {rewardsAvailable} Available
-          </h3>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-interface CarouselItemProps {
-  imageSrc: string;
+interface ContentCardProps {
+  gradientFrom: string;
+  gradientTo: string;
   title: string;
   category: string;
-  info: string;
+  duration?: string; // e.g., "8 Episodes", "2h 15m", "Season 5"
+  categoryColor: string;
+  detailColor: string; // for duration/episodes/etc
+  iconColor: string;
 }
-
-const CarouselItem: React.FC<CarouselItemProps> = ({ imageSrc, title, category, info }) => {
-  return (
-    <div
-      className="flex w-[192px] flex-shrink-0 flex-col overflow-hidden rounded-[14px] bg-[#101828]"
-      style={{ boxShadow: '0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-    >
-      <div
-        className="relative flex h-[112px] w-full items-center justify-center rounded-t-[14px]"
-        style={{ background: 'linear-gradient(216deg, #364153 0%, #1e2838 100%)' }}
-      >
-        {/* Placeholder for video/image */}
-        <Image src={imageSrc} alt={title} fill className="object-cover" />
-        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <IconPlay className="w-[7.5px] h-[11.6px] text-white" fill="currentColor" />
-          </div>
-        </div>
-      </div>
-      <div className="p-3">
-        <p className="mb-1 text-base font-normal leading-6 tracking-[-0.3125px] text-white">
-          {title}
-        </p>
-        <div className="flex justify-between text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#99a1af]">
-          <span>{category}</span>
-          <div className="flex items-center space-x-1">
-            <IconClock className="w-3 h-3" stroke="#99a1af" />
-            <span>{info}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-interface ContentCarouselProps {
-  title: string;
-  description: string;
-  seeAllLink: string;
-  items: CarouselItemProps[];
-}
-
-const ContentCarousel: React.FC<ContentCarouselProps> = ({ title, description, seeAllLink, items }) => {
-  return (
-    <section className="bg-white px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-            {title}
-          </h2>
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            {description}
-          </p>
-        </div>
-        <Link href={seeAllLink} className="flex items-center text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
-          See All <IconArrowRight className="ml-1 w-4 h-4" stroke="#155dfc" />
-        </Link>
-      </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {items.map((item, index) => (
-          <CarouselItem key={index} {...item} />
-        ))}
-      </div>
-    </section>
-  );
-};
 
 interface CurrentPlanCardProps {
   planName: string;
-  price: string;
-  status: 'Active' | 'Expiring';
-  channels: string;
-  speed?: string; // For Fiber plans
+  planPrice: string;
+  channels: string; // e.g., "200+"
   validUntil: string;
-  manageLink: string;
-  upgradeLink: string;
-  payBillLink?: string; // Only for postpaid
-  icon: React.ReactNode;
+  status: 'Active' | 'Expiring'; // Maps to color-9/color-10 or #E7000B
+  iconPaths: { d: string; fill?: string; string?: string; stroke?: string; strokeWidth?: number }[];
+  statusBgColor: string;
+  statusTextColor: string;
 }
 
-const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({
-  planName,
-  price,
-  status,
-  channels,
-  speed,
-  validUntil,
-  manageLink,
-  upgradeLink,
-  payBillLink,
-  icon,
-}) => {
-  const statusColorClass = status === 'Active' ? 'bg-[#dcfce7] text-[#008236]' : 'bg-[#fff5e3] text-[#c93500]';
+interface HelpDetailProps {
+  question: string;
+  answer: string;
+  chevronColor: string;
+  textColor: string;
+}
 
-  return (
-    <div className="w-[280px] flex-shrink-0 rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eff6ff]">
-            {icon}
-          </div>
-          <div>
-            <h3 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-              {planName}
-            </h3>
-            <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-              {price}
-            </p>
-          </div>
-        </div>
-        <span className={`rounded-full px-3 py-1 text-sm font-medium ${statusColorClass}`}>
-          {status}
-        </span>
+// Icon for chevron (right arrow)
+const ChevronRightIcon: React.FC<{ className?: string; stroke?: string }> = ({ className = 'stroke-[#6a7282]' }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M5.99729 3.99819L9.99548 7.99638L5.99729 11.9946" strokeWidth="1.33273" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// Icon for clock
+const ClockIcon: React.FC<{ className?: string }> = ({ className = 'stroke-[#99a1af]' }) => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 12 12"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M5.99956 2.99978V6.99797" strokeWidth="0.999927" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M0.999927 0.999927C4.10393 0.999927 6.66629 3.56228 6.66629 6.66629C6.66629 9.7703 4.10393 12.3326 0.999927 12.3326C-2.10408 12.3326 -4.66644 9.7703 -4.66644 6.66629C-4.66644 3.56228 -2.10408 0.999927 0.999927 0.999927Z" strokeWidth="0.999927" />
+  </svg>
+);
+
+// Icon for episode/season
+const FilmIcon: React.FC<{ className?: string }> = ({ className = 'stroke-[#99a1af]' }) => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 12 12"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M0.999927 0.999927C4.10393 0.999927 6.66629 3.56228 6.66629 6.66629C6.66629 9.7703 4.10393 12.3326 0.999927 12.3326C-2.10408 12.3326 -4.66644 9.7703 -4.66644 6.66629C-4.66644 3.56228 -2.10408 0.999927 0.999927 0.999927Z" strokeWidth="0.999927" />
+  </svg>
+);
+
+// Generic icon from vectors
+const GenericIcon: React.FC<{ paths: { d: string; fill?: string; stroke?: string; strokeWidth?: number }[]; size?: number; className?: string }> = ({ paths, size = 20, className }) => (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
+        {paths.map((path, index) => (
+            <path
+                key={index}
+                d={path.d}
+                fill={path.fill || "none"}
+                stroke={path.stroke || "currentColor"}
+                strokeWidth={path.strokeWidth || 1}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        ))}
+    </svg>
+);
+
+// --- Sub-components ---
+
+const AppCard: React.FC<AppCardProps> = ({ iconPaths, gradientFrom, gradientTo, title, description, textColor, descriptionColor }) => (
+  <div className="flex flex-col gap-2 w-[128px]">
+    <div className={`w-[128px] h-[128px] bg-gradient-to-br ${gradientFrom} ${gradientTo} rounded-[14px] flex items-center justify-center shadow-[0_4px_6px_rgba(0,0,0,0.1),0_10px_15px_rgba(0,0,0,0.1)]`}>
+      <GenericIcon paths={iconPaths} size={48} className="stroke-white" />
+    </div>
+    <div className="flex flex-col items-center">
+      <p className={`text-center text-[${textColor}] text-[16px] font-normal leading-6 tracking-[-0.3125px]`}>{title}</p>
+      <p className={`text-center text-[${descriptionColor}] text-[16px] font-normal leading-6 tracking-[-0.3125px]`}>{description}</p>
+    </div>
+  </div>
+);
+
+const ContentCard: React.FC<ContentCardProps> = ({ gradientFrom, gradientTo, title, category, duration, iconColor }) => (
+  <div className="flex flex-col w-[192px] rounded-[14px] bg-[#101828] overflow-hidden">
+    <div className={`relative w-full h-[112px] bg-gradient-to-br ${gradientFrom} ${gradientTo} flex items-center justify-center`}>
+      <div className="w-[48px] h-[48px] rounded-full bg-white/[0.2] flex items-center justify-center">
+        <div className="w-[7.57px] h-[11.64px] border-2 border-white" /> {/* Placeholder for play icon */}
       </div>
-
-      <div className="space-y-2 border-t border-[#f3f4f6] pt-4">
-        <div className="flex items-center justify-between">
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            Channels
-          </p>
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828]">
-            {channels}
-          </p>
-        </div>
-        {speed && (
-          <div className="flex items-center justify-between">
-            <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-              Speed
-            </p>
-            <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828]">
-              {speed}
-            </p>
+    </div>
+    <div className="p-3 flex flex-col gap-1.5 h-full">
+      <p className="text-white text-[16px] font-normal leading-6 tracking-[-0.3125px]">{title}</p>
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-[#99a1af] text-[16px] font-normal leading-6 tracking-[-0.3125px]">{category}</span>
+        {duration && (
+          <div className="flex items-center gap-1">
+            <ClockIcon className={`stroke-[${iconColor}] w-3 h-3`} />
+            <span className={`text-[${iconColor}] text-[16px] font-normal leading-6 tracking-[-0.3125px]`}>{duration}</span>
           </div>
-        )}
-        <div className="flex items-center justify-between">
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            Valid Until
-          </p>
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828]">
-            {validUntil}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <Link
-          href={manageLink}
-          className="flex-1 rounded-lg bg-[#f3f4f6] px-4 py-2 text-center text-base font-medium text-[#101828]"
-        >
-          Manage
-        </Link>
-        {payBillLink ? (
-          <Link
-            href={payBillLink}
-            className="flex-1 rounded-lg bg-[#008236] px-4 py-2 text-center text-base font-medium text-white"
-          >
-            Pay Bill
-          </Link>
-        ) : (
-          <Link
-            href={upgradeLink}
-            className="flex-1 rounded-lg bg-[#155dfc] px-4 py-2 text-center text-base font-medium text-white"
-          >
-            Upgrade
-          </Link>
         )}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
-interface CurrentPlansSectionProps {
-  title: string;
-  description: string;
-  actionButtons: { label: string; link: string; icon: React.ReactNode }[];
-  plans: CurrentPlanCardProps[];
-}
-
-const CurrentPlansSection: React.FC<CurrentPlansSectionProps> = ({ title, description, actionButtons, plans }) => {
-  return (
-    <section className="bg-white px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-            {title}
-          </h2>
-          <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            {description}
-          </p>
+const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({ planName, planPrice, channels, validUntil, status, iconPaths, statusBgColor, statusTextColor }) => (
+  <div className="min-w-[280px] flex-shrink-0 bg-white border border-[#e5e7eb] rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.1)] flex flex-col p-4 gap-4">
+    <div className="flex items-start justify-between">
+      <div className="flex gap-3">
+        <div className="w-[48px] h-[48px] bg-[#eff6ff] rounded-[14px] flex items-center justify-center">
+          <GenericIcon paths={iconPaths} size={32} className="stroke-[#155dfc]" />
         </div>
-        <div className="flex space-x-2">
-          {actionButtons.map((button, index) => (
-            <Link
-              key={index}
-              href={button.link}
-              className="flex h-[33.15px] w-[33.15px] items-center justify-center rounded-lg border border-[#e5e7eb] text-[#4a5565]"
-              aria-label={button.label}
-            >
-              {button.icon}
-            </Link>
-          ))}
+        <div className="flex flex-col">
+          <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">{planName}</h3>
+          <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">{planPrice}</p>
         </div>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {plans.map((plan, index) => (
-          <CurrentPlanCard key={index} {...plan} />
-        ))}
+      <div className={`px-2 py-1 rounded-full ${statusBgColor} text-[16px] font-normal leading-6 tracking-[-0.3125px] ${statusTextColor}`}>
+        {status}
       </div>
-    </section>
-  );
-};
+    </div>
 
-interface HelpItemProps {
-  question: string;
-  answer: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-}
+    <div className="flex flex-col gap-2 pt-4 border-t border-[#f3f4f6]">
+      <div className="flex justify-between items-center">
+        <span className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Channels</span>
+        <span className="text-[#101828] text-base font-normal leading-6 tracking-[-0.3125px]">{channels}</span>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Valid Until</span>
+        <span className="text-[#101828] text-base font-normal leading-6 tracking-[-0.3125px]">{validUntil}</span>
+      </div>
+    </div>
 
-const HelpItem: React.FC<HelpItemProps> = ({ question, answer, isExpanded, onToggle }) => {
-  return (
-    <div className="overflow-hidden rounded-xl border border-[#e5e7eb] bg-white">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between p-4 text-left"
-        aria-expanded={isExpanded}
-        aria-controls={`faq-answer-${question.replace(/\s/g, '-')}`}
-      >
-        <p className="text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828]">
-          {question}
-        </p>
-        <IconArrowRight className={`w-4 h-4 text-[#99a1af] transition-transform duration-300 ${isExpanded ? 'rotate-90' : 'rotate-0'}`} stroke="#99a1af" />
+    <div className="flex gap-2 pt-4 border-t border-[#f3f4f6]">
+      <button className="flex-1 px-4 py-2 bg-[#eff6ff] rounded-lg text-[#101828] text-base font-normal leading-6 tracking-[-0.3125px]">
+        Manage
       </button>
-      {isExpanded && (
-        <p
-          id={`faq-answer-${question.replace(/\s/g, '-')}`}
-          className="px-4 pb-4 text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]"
-        >
+      <button className="flex-1 px-4 py-2 bg-[#155dfc] rounded-lg text-white text-base font-normal leading-6 tracking-[-0.3125px]">
+        Upgrade
+      </button>
+      {planName === "Cignal Postpaid Premium" && (
+        <button className="flex-1 px-4 py-2 bg-[#00A63E] rounded-lg text-white text-base font-normal leading-6 tracking-[-0.3125px]">
+          Pay Bill
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+const HelpDetail: React.FC<HelpDetailProps> = ({ question, answer, chevronColor, textColor }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.1)]">
+      <button
+        className="w-full flex justify-between items-center p-4"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+      >
+        <p className={`text-[${textColor}] text-base font-normal leading-6 tracking-[-0.3125px] pr-4 text-left`}>{question}</p>
+        <ChevronRightIcon className={`transform transition-transform ${isOpen ? 'rotate-90' : ''} stroke-[${chevronColor}]`} />
+      </button>
+      {isOpen && (
+        <p className={`p-4 pt-0 text-[${textColor}] text-base font-normal leading-6 tracking-[-0.3125px]`}>
           {answer}
         </p>
       )}
@@ -889,576 +217,640 @@ const HelpItem: React.FC<HelpItemProps> = ({ question, answer, isExpanded, onTog
   );
 };
 
-interface HelpSectionProps {
-  title: string;
-  faqItems: Omit<HelpItemProps, 'isExpanded' | 'onToggle'>[];
-  internetIssueLink: string;
-  noTVSignalLink: string;
-  resetDeviceLink: string;
-  callSupportLink: string;
-  stillNeedHelpTitle: string;
-  callSupportButtonLabel: string;
-  chatWithUsButtonLabel: string;
-  viewAllFaqsLink: string;
-}
 
-const HelpSection: React.FC<HelpSectionProps> = ({
-  title,
-  faqItems,
-  internetIssueLink,
-  noTVSignalLink,
-  resetDeviceLink,
-  callSupportLink,
-  stillNeedHelpTitle,
-  callSupportButtonLabel,
-  chatWithUsButtonLabel,
-  viewAllFaqsLink,
-}) => {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+// --- Main Component ---
 
-  const handleToggle = (index: number) => {
-    setExpandedIndex(expandedIndex === index ? null : index);
-  };
+export interface TourPayBillScreenComponentProps extends TourPayBillScreenProps {}
+
+export const TourPayBillScreen: React.FC<TourPayBillScreenComponentProps> = () => {
+  const [showPayBillModal, setShowPayBillModal] = useState(false);
+
+  const togglePayBillModal = () => setShowPayBillModal(!showPayBillModal);
 
   return (
-    <section className="bg-[#f9fafc] px-4 py-6">
-      <div className="mb-6 flex items-center">
-        <IconQuestionMark className="w-6 h-6" stroke="#364153" />
-        <h2 className="ml-2 text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-          {title}
-        </h2>
-      </div>
-
-      <div className="mb-6 flex space-x-2 border-b border-[#e5e7eb]">
-        <button className="flex-1 border-b-2 border-[#155dfc] pb-3 text-base font-medium text-[#155dfc]" aria-current="page">
-          FAQs
-        </button>
-        <button className="flex-1 border-b-2 border-transparent pb-3 text-base font-medium text-[#4a5565]">
-          Diagnostics
-        </button>
-      </div>
-
-      <div className="mb-6 grid grid-cols-2 gap-4">
-        <Link href={internetIssueLink} className="flex flex-col items-center justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-6 text-center shadow-sm">
-          <IconNoWifi className="h-6 w-6" />
-          <p className="mt-2 text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#364153]">
-            Internet Issues
-          </p>
-        </Link>
-        <Link href={noTVSignalLink} className="flex flex-col items-center justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-6 text-center shadow-sm">
-          <IconNoTV className="h-6 w-6" />
-          <p className="mt-2 text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#364153]">
-            No TV Signal
-          </p>
-        </Link>
-        <Link href={resetDeviceLink} className="flex flex-col items-center justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-6 text-center shadow-sm">
-          <IconReset className="h-6 w-6" />
-          <p className="mt-2 text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#364153]">
-            Reset Device
-          </p>
-        </Link>
-        <Link href={callSupportLink} className="flex flex-col items-center justify-center rounded-xl border border-[#e5e7eb] bg-white px-4 py-6 text-center shadow-sm">
-          <IconPhone className="h-6 w-6" />
-          <p className="mt-2 text-sm font-normal leading-[16px] tracking-[-0.3125px] text-[#364153]">
-            Call Support
-          </p>
-        </Link>
-      </div>
-
-      <div className="mb-6 space-y-4">
-        {faqItems.map((item, index) => (
-          <HelpItem
-            key={index}
-            {...item}
-            isExpanded={expandedIndex === index}
-            onToggle={() => handleToggle(index)}
-          />
-        ))}
-      </div>
-
-      <div className="mb-6 rounded-xl border border-[#c6e0ff] bg-[#eff6ff] p-4">
-        <p className="mb-4 text-base font-normal leading-6 tracking-[-0.3125px] text-[#101828]">
-          {stillNeedHelpTitle}
-        </p>
-        <div className="flex gap-2">
-          <Link href="#" className="flex-1 rounded-lg border border-[#c6e0ff] bg-white px-4 py-2 text-center text-base font-medium text-[#1447e6]">
-            {callSupportButtonLabel}
-          </Link>
-          <Link href="#" className="flex-1 rounded-lg bg-[#155dfc] px-4 py-2 text-center text-base font-medium text-white">
-            {chatWithUsButtonLabel}
-          </Link>
-        </div>
-      </div>
-
-      <Link
-        href={viewAllFaqsLink}
-        className="block w-full rounded-xl border border-[#d0d5dd] px-4 py-3 text-center text-base font-medium text-[#101828] shadow-sm"
-      >
-        View All FAQs
-      </Link>
-    </section>
-  );
-};
-
-interface NavItemProps {
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-}
-
-const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive }) => {
-  const textColorClass = isActive ? 'text-[#155dfc]' : 'text-[#4a5565]';
-  const iconColor = isActive ? '#155dfc' : '#4a5565';
-  return (
-    <Link href="#" className={`flex flex-1 flex-col items-center px-2 py-1 ${textColorClass}`} aria-current={isActive ? 'page' : undefined}>
-      {React.cloneElement(icon as React.ReactElement, { stroke: iconColor })}
-      <span className="mt-1 text-xs font-normal">{label}</span>
-    </Link>
-  );
-};
-
-interface BottomNavProps {
-  navItems: NavItemProps[];
-}
-
-const BottomNav: React.FC<BottomNavProps> = ({ navItems }) => {
-  return (
-    <nav className="fixed bottom-0 left-0 z-10 w-full border-t border-[#e5e7eb] bg-white py-2">
-      <div className="mx-auto flex max-w-md items-center justify-around">
-        {navItems.map((item, index) => (
-          <NavItem key={index} {...item} />
-        ))}
-      </div>
-    </nav>
-  );
-};
-
-interface ChatBotButtonProps {
-  onClick: () => void;
-}
-
-const ChatBotButton: React.FC<ChatBotButtonProps> = ({ onClick }) => {
-  return (
-    <button
-      onClick={onClick}
-      aria-label="Open chat support"
-      className="fixed bottom-[96px] right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-[#004FFF] shadow-lg ring-4 ring-[#155dfc]"
-    >
-      <IconChat className="h-6 w-6" stroke="white" />
-    </button>
-  );
-};
-
-interface PayBillModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const PayBillModal: React.FC<PayBillModalProps> = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-black bg-opacity-70"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="pay-bill-modal-title"
-    >
-      <div className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-xl mx-7">
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-[#99a1af]"
-          aria-label="Close modal"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        <div className="flex flex-col items-center">
-          <p className="mb-2 text-base font-normal leading-6 tracking-[-0.3125px] text-[#155dfc]">
-            Step 3 of 4
-          </p>
-          <h3 id="pay-bill-modal-title" className="mb-4 text-xl font-medium leading-[30px] tracking-[-0.44921875px] text-[#101828]">
-            Pay Your Bill
-          </h3>
-          <p className="mb-6 text-center text-base font-normal leading-6 tracking-[-0.3125px] text-[#4a5565]">
-            Easily view and pay your bills directly from the app. Stay on top of your payments effortlessly.
-          </p>
-
-          <div className="flex w-full items-center justify-center space-x-2">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#99a1af]" />
-            <div className="h-1.5 w-1.5 rounded-full bg-[#99a1af]" />
-            <div className="h-1.5 w-6 rounded-full bg-[#155dfc]" />
-            <div className="h-1.5 w-1.5 rounded-full bg-[#99a1af]" />
+    <div className="relative w-full min-h-screen bg-[#f3f4f6] font-['Inter']">
+      {/* TopBar */}
+      <div className="sticky top-0 z-10 w-full h-[64.57px] bg-white border-b border-[#e5e7eb] flex items-center px-4">
+        <div className="flex items-center justify-between w-full h-[40px]">
+          <div className="flex items-center gap-3">
+            <div className="w-[40px] h-[40px] rounded-full bg-gradient-to-br from-[#155DFB] to-[#4F39F6] flex items-center justify-center">
+              <span className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">C1</span>
+            </div>
+            <h1 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Cignal One</h1>
           </div>
-
-          <div className="mt-8 flex w-full justify-between space-x-4">
-            <button
-              onClick={onClose} // Simplified to close on "Back"
-              className="flex-1 rounded-lg border border-[#e5e7eb] px-4 py-2 text-base font-medium text-[#101828]"
-            >
-              <IconArrowRight className="inline-block rotate-180 mr-1 w-4 h-4" stroke="#101828" />
-              Back
+          <div className="flex items-center gap-3">
+            <button aria-label="Notifications" className="w-[36px] h-[36px] rounded-full flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M13.8802 13.8802L17.4961 17.4961" stroke="#364153" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2.50005 2.50005L15.8304 15.8304" stroke="#364153" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
-            <button
-              onClick={onClose} // Simplified to close on "Next"
-              className="flex-1 rounded-lg bg-[#155dfc] px-4 py-2 text-base font-medium text-white shadow-sm"
-            >
-              Next
-              <IconArrowRight className="inline-block ml-1 w-4 h-4" stroke="white" />
+            <button aria-label="Search" className="w-[36px] h-[36px] rounded-full flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M4.16573 12.4972L11.664 4.99888" stroke="#364153" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6.66517 2.49944C9.77025 2.49944 12.3326 5.06179 12.3326 8.16588C12.3326 11.2704 9.77025 13.8327 6.66517 13.8327C3.5601 13.8327 0.997742 11.2704 0.997742 8.16588C0.997742 5.06179 3.5601 2.49944 6.66517 2.49944Z" stroke="#364153" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </button>
+            <div className="absolute w-2 h-2 rounded-full bg-[#fa2c36] right-0 top-1/2 -mt-2 mr-2" /> {/* Notification dot */}
           </div>
         </div>
       </div>
-    </div>
-  );
-};
-
-export default function PayBillPage() {
-  const router = useRouter(); 
-
-  const [isPayBillModalOpen, setIsPayBillModalOpen] = useState(true); 
-
-  const handleOpenPayBillModal = () => setIsPayBillModalOpen(true);
-  const handleClosePayBillModal = () => setIsPayBillModalOpen(false);
-
-  // Mock data for components
-  const apps = [
-    {
-      gradientColors: { start: '#2b7ffc', end: '#155dfc' },
-      icon: <IconTV className="w-12 h-12" stroke="white" />,
-      title: 'Cignal Postpaid',
-      description: 'Premium TV experience',
-    },
-    {
-      gradientColors: { start: '#615efc', end: '#4f39f6' },
-      icon: <IconMobileStreaming className="w-12 h-12" stroke="white" />,
-      title: 'Cignal Prepaid',
-      description: 'Flexible TV plans',
-    },
-    {
-      gradientColors: { start: '#ad47ff', end: '#980ff6' },
-      icon: <IconMobilePhone className="w-12 h-12" stroke="white" />,
-      title: 'SatLite',
-      description: 'Mobile streaming',
-    },
-    {
-      gradientColors: { start: '#00c950', end: '#00a63e' },
-      icon: <IconWifi className="w-12 h-12" stroke="white" />,
-      title: 'Pilipinas Live',
-      description: 'Local channels',
-    },
-    // Add a placeholder card for "New App" with a border
-    {
-      gradientColors: { start: '#f3f4f6', end: '#f3f4f6' }, // Used to trigger border-only style
-      icon: (
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border-[1.75px] border-[#99a1af] p-1">
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M7.99992 2.66602V13.3327"
-              stroke="#99a1af"
-              strokeWidth="1.33333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2.66659 7.99935H13.3333"
-              stroke="#99a1af"
-              strokeWidth="1.33333"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      ),
-      title: 'Cignal Super',
-      description: 'New App',
-    },
-  ];
-
-  const entertainmentCarouselItems = [
-    {
-      imageSrc: getImageUrl('carousel-1'),
-      title: 'The Latest Drama Series',
-      category: 'Drama',
-      info: '8 Episodes',
-    },
-    {
-      imageSrc: getImageUrl('carousel-2'),
-      title: 'Comedy Night Special',
-      category: 'Comedy',
-      info: '2h 15m',
-    },
-    {
-      imageSrc: getImageUrl('carousel-3'),
-      title: 'Documentary: Nature',
-      category: 'Documentary',
-      info: '1h 45m',
-    },
-  ];
-
-  const moviesCarouselItems = [
-    {
-      imageSrc: getImageUrl('movie-1'),
-      title: 'Action Thriller 2024',
-      category: 'Action',
-      info: '2h 30m',
-    },
-    {
-      imageSrc: getImageUrl('movie-2'),
-      title: 'Romantic Comedy',
-      category: 'Romance',
-      info: '1h 55m',
-    },
-    {
-      imageSrc: getImageUrl('movie-3'),
-      title: 'Sci-Fi Adventure',
-      category: 'Sci-Fi',
-      info: '2h 45m',
-    },
-  ];
-
-  const sportsCarouselItems = [
-    {
-      imageSrc: getImageUrl('sports-1'),
-      title: 'NBA Finals Game 7',
-      category: 'Basketball',
-      info: 'Live',
-    },
-    {
-      imageSrc: getImageUrl('sports-2'),
-      title: 'Premier League Match',
-      category: 'Football',
-      info: 'Today 8PM',
-    },
-    {
-      imageSrc: getImageUrl('sports-3'),
-      title: 'Tennis Grand Slam',
-      category: 'Tennis',
-      info: 'Live Now',
-    },
-  ];
-
-  const currentPlans = [
-    {
-      planName: 'Cignal Postpaid Premium',
-      price: '₱1,899/month',
-      status: 'Active' as const,
-      channels: '200+',
-      validUntil: 'Dec 15, 2025',
-      manageLink: '#',
-      upgradeLink: '#',
-      payBillLink: '#',
-      icon: <IconTV className="w-8 h-8" stroke="#155dfc" />,
-    },
-    {
-      planName: 'Cignal Fiber 100 Mbps',
-      price: '₱1,699/month',
-      status: 'Active' as const,
-      channels: '50+',
-      speed: '100 Mbps',
-      validUntil: 'Dec 31, 2025',
-      manageLink: '#',
-      upgradeLink: '#',
-      icon: <IconWifi className="w-8 h-8" stroke="#155dfc" />,
-    },
-    {
-      planName: 'Cignal Prepaid Basic',
-      price: '₱299/month',
-      status: 'Expiring' as const,
-      channels: '30+',
-      validUntil: 'Dec 10, 2025',
-      manageLink: '#',
-      upgradeLink: '#',
-      icon: <IconMobileStreaming className="w-8 h-8" stroke="#155dfc" />,
-    },
-  ];
-
-  const helpFaqItems = [
-    {
-      question: 'How do I upgrade my subscription?',
-      answer:
-        'Go to your Current Plans section, select the plan you wish to upgrade, and follow the prompts. You can also contact customer support for assistance.',
-    },
-    {
-      question: 'What payment methods are accepted?',
-      answer:
-        'We accept credit cards, debit cards, GCash, PayMaya, and over-the-counter payments at our partner establishments.',
-    },
-    {
-      question: 'Can I pause my subscription?',
-      answer:
-        'Yes, you can pause prepaid subscriptions. For postpaid subscriptions, please contact customer support to discuss your options.',
-    },
-  ];
-
-  const navItems = [
-    { icon: <IconHome className="w-5 h-5" />, label: 'Home', isActive: true },
-    { icon: <IconSubscriptions className="w-5 h-5" />, label: 'Subscriptions', isActive: false },
-    { icon: <IconHelp className="w-5 h-5" />, label: 'Help', isActive: false },
-    { icon: <IconProfile className="w-5 h-5" />, label: 'Profile', isActive: false },
-  ];
-
-  return (
-    <div className="relative mx-auto min-h-screen max-w-[376px] overflow-x-hidden bg-[#f9fafc] text-sm">
-      {/* Top Bar */}
-      <TopBar appName="Cignal One" notificationsCount={2} />
 
       {/* Main Content Area */}
-      <main className="relative flex flex-col pb-[80px]">
-        {/* Header Image Section */}
-        <section className="relative h-[256px] w-full bg-[#101828]">
-          <Image
-            src={getImageUrl('4eda220f49efdbb1ad4b1a5c9ead0b901dc88c43')}
-            alt="New Release: Action Movies Marathon"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* Overlay gradient */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%)',
-            }}
-          ></div>
-          <div className="absolute bottom-6 left-6 right-6">
-            <h2 className="text-[30px] font-medium leading-[30px] tracking-[-0.66px] text-white">
-              New Release: Action Movies Marathon
-            </h2>
-            <p className="mt-2 text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              Stream the latest blockbusters
-            </p>
+      <div className="pb-[calc(64.55px+24px)]"> {/* Padding for fixed bottom nav and chatbot */}
+        <div className="flex flex-col gap-4 py-6">
+          {/* Header Image/Banner */}
+          <div className="relative w-full h-[256px] overflow-hidden">
+            <img src="https://via.placeholder.com/376x256/202c38/ffffff?text=New+Release" alt="New Release: Action Movies Marathon" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/[0.8] via-black/[0.4] to-transparent"></div>
+            <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2">
+              <h2 className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">New Release: Action Movies Marathon</h2>
+              <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">Stream the latest blockbusters</p>
+            </div>
           </div>
-        </section>
-
-        {/* Current Plans Section */}
-        <CurrentPlansSection
-          title="Current Plans"
-          description="Manage your active subscriptions"
-          actionButtons={[
-            { label: 'Sort', link: '#', icon: <svg className="w-4 h-4 text-[#4a5565]" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12.6666 4.66699L7.99992 9.33366L3.33325 4.66699" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg> },
-            { label: 'Filter', link: '#', icon: <svg className="w-4 h-4 text-[#4a5565]" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.66659 4.66602L13.3333 4.66602L13.3333 7.33268L2.66659 7.33268L2.66659 4.66602Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M2.66659 9.33268L13.3333 9.33268L13.3333 11.9993L2.66659 11.9993L2.66659 9.33268Z" stroke="currentColor" strokeWidth="1.33333" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg> },
-          ]}
-          plans={currentPlans}
-        />
-
-        {/* Your Apps Section */}
-        <AppsSection
-          title="Your Apps"
-          description="Manage your subscriptions"
-          viewAllLink="#"
-          apps={apps}
-        />
-
-        {/* Wallet Preview Section */}
-        <WalletPreview
-          points={2450}
-          rewardsAvailable={15}
-          viewWalletLink="#"
-        />
-
-        {/* Content Carousels */}
-        <ContentCarousel
-          title="Entertainment"
-          description="Popular shows and series"
-          seeAllLink="#"
-          items={entertainmentCarouselItems}
-        />
-        <ContentCarousel
-          title="Movies"
-          description="Blockbusters and classics"
-          seeAllLink="#"
-          items={moviesCarouselItems}
-        />
-        <ContentCarousel
-          title="Sports & Live Events"
-          description="Watch your favorite sports"
-          seeAllLink="#"
-          items={sportsCarouselItems}
-        />
-
-        {/* Dynamic Image Sections */}
-        <section className="relative h-[256px] w-full bg-[#101828] mt-4">
-          <Image
-            src={getImageUrl('f4601d3391337eed910f0c51a0cffe14718ee87a')}
-            alt="Live Sports: Premier League"
-            fill
-            className="object-cover"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%)',
-            }}
-          ></div>
-          <div className="absolute bottom-6 left-6 right-6">
-            <h2 className="text-[30px] font-medium leading-[30px] tracking-[-0.66px] text-white">
-              Live Sports: Premier League
-            </h2>
-            <p className="mt-2 text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              Watch your favorite teams live
-            </p>
+          {/* Live Sports Image/Banner */}
+          <div className="relative w-full h-[256px] overflow-hidden">
+            <img src="https://via.placeholder.com/376x256/202c38/ffffff?text=Live+Sports" alt="Live Sports: Premier League" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/[0.8] via-black/[0.4] to-transparent"></div>
+            <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2">
+              <h2 className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Live Sports: Premier League</h2>
+              <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">Watch your favorite teams live</p>
+            </div>
           </div>
-        </section>
-
-        <section className="relative h-[256px] w-full bg-[#101828] mt-4">
-          <Image
-            src={getImageUrl('8a6558968e08468118b791792df41cb25d126728')}
-            alt="Breaking News Coverage"
-            fill
-            className="object-cover"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0) 100%)',
-            }}
-          ></div>
-          <div className="absolute bottom-6 left-6 right-6">
-            <h2 className="text-[30px] font-medium leading-[30px] tracking-[-0.66px] text-white">
-              Breaking News Coverage
-            </h2>
-            <p className="mt-2 text-base font-normal leading-6 tracking-[-0.3125px] text-white/90">
-              24/7 news and updates
-            </p>
+          {/* Breaking News Image/Banner */}
+          <div className="relative w-full h-[256px] overflow-hidden">
+            <img src="https://via.placeholder.com/376x256/202c38/ffffff?text=Breaking+News" alt="Breaking News Coverage" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/[0.8] via-black/[0.4] to-transparent"></div>
+            <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-2">
+              <h2 className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Breaking News Coverage</h2>
+              <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">24/7 news and updates</p>
+            </div>
           </div>
-        </section>
+          {/* Pagination for Banners */}
+          <div className="flex justify-end gap-2 pr-6">
+            <div className="w-[24px] h-[8px] rounded-full bg-white" />
+            <div className="w-[8px] h-[8px] rounded-full bg-white/[0.5]" />
+            <div className="w-[8px] h-[8px] rounded-full bg-white/[0.5]" />
+          </div>
 
-        {/* Help Section */}
-        <HelpSection
-          title="Help & Support"
-          faqItems={helpFaqItems}
-          internetIssueLink="#"
-          noTVSignalLink="#"
-          resetDeviceLink="#"
-          callSupportLink="#"
-          stillNeedHelpTitle="Still need help?"
-          callSupportButtonLabel="Call Support"
-          chatWithUsButtonLabel="Chat with Us"
-          viewAllFaqsLink="#"
-        />
-      </main>
+          {/* Current Plans Section */}
+          <section className="bg-white px-4 py-4 border-b border-[#f3f4f6]">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col">
+                <h2 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Current Plans</h2>
+                <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Manage your active subscriptions</p>
+              </div>
+              <div className="flex gap-2">
+                <button aria-label="Previous plan" className="w-[33.15px] h-[33.15px] rounded-lg border border-[#e5e7eb] flex items-center justify-center">
+                  <ChevronRightIcon className="transform rotate-180 stroke-[#4a5565] w-4 h-4" />
+                </button>
+                <button aria-label="Next plan" className="w-[33.15px] h-[33.15px] rounded-lg border border-[#e5e7eb] flex items-center justify-center">
+                  <ChevronRightIcon className="stroke-[#4a5565] w-4 h-4" />
+                </button>
+            </div>
+            </div>
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <CurrentPlanCard
+                planName="Cignal Postpaid Premium"
+                planPrice="₱1,899/month"
+                channels="200+"
+                validUntil="Dec 15, 2025"
+                status="Active"
+                iconPaths={[{ d: "M2.66622 6.66555H29.3284V25.3291C29.3284 26.8043 28.1408 27.9917 26.6655 27.9917H5.33256C3.85725 27.9917 2.66622 26.8043 2.66622 25.3291V6.66555Z", stroke: undefined, strokeWidth: undefined }, { d: "M2.66622 13.3311H29.3284", stroke: undefined, strokeWidth: undefined }]}
+                statusBgColor="bg-[#dcfce7]"
+                statusTextColor="text-[#008236]"
+              />
+              <CurrentPlanCard
+                planName="Cignal Fiber 100 Mbps"
+                planPrice="₱1,699/month"
+                channels="100 Mbps"
+                validUntil="Dec 31, 2025"
+                status="Active"
+                iconPaths={[{ d: "M9.33177 2.66622H22.6629L25.3291 9.33177L15.9973 26.6622L6.66555 9.33177L9.33177 2.66622Z", stroke: undefined, strokeWidth: undefined }, { d: "M15.9973 26.6622V26.6622", stroke: undefined, strokeWidth: undefined }, { d: "M6.66555 3.99933H25.3291L2.66622 6.66555H7.99866L15.9973 13.3311L2.66622 6.66555Z", stroke: undefined, strokeWidth: undefined }, { d: "M11.3314 19.9963L20.6632 21.9017", stroke: undefined, strokeWidth: undefined }]}
+                statusBgColor="bg-[#dcfce7]"
+                statusTextColor="text-[#008236]"
+              />
+              <CurrentPlanCard
+                planName="Cignal Prepaid Basic"
+                planPrice="₱299/month"
+                channels="30+"
+                validUntil="Dec 10, 2025"
+                status="Expiring"
+                iconPaths={[{ d: "M9.33177 2.66622H22.6629L25.3291 9.33177L15.9973 26.6622L6.66555 9.33177L9.33177 2.66622Z", stroke: undefined, strokeWidth: undefined }, { d: "M15.9973 26.6622V26.6622", stroke: undefined, strokeWidth: undefined }, { d: "M6.66555 3.99933H25.3291L2.66622 6.66555H7.99866L15.9973 13.3311L2.66622 6.66555Z", stroke: undefined, strokeWidth: undefined }, { d: "M11.3314 19.9963L20.6632 21.9017", stroke: undefined, strokeWidth: undefined }]}
+                statusBgColor="bg-[#ffe8e0]" // Approx for #FDE0DCE0
+                statusTextColor="text-[#E7000B]" // Approx for #E7000B
+              />
+               <CurrentPlanCard
+                planName="Cignal Fiber 200 Mbps"
+                planPrice="₱2,499/month"
+                channels="200 Mbps"
+                validUntil="Mar 15, 2026"
+                status="Active"
+                iconPaths={[{ d: "M9.33177 2.66622H22.6629L25.3291 9.33177L15.9973 26.6622L6.66555 9.33177L9.33177 2.66622Z", stroke: undefined, strokeWidth: undefined }, { d: "M15.9973 26.6622V26.6622", stroke: undefined, strokeWidth: undefined }, { d: "M6.66555 3.99933H25.3291L2.66622 6.66555H7.99866L15.9973 13.3311L2.66622 6.66555Z", stroke: undefined, strokeWidth: undefined }, { d: "M11.3314 19.9963L20.6632 21.9017", stroke: undefined, strokeWidth: undefined }]}
+                statusBgColor="bg-[#dcfce7]"
+                statusTextColor="text-[#008236]"
+              />
+            </div>
+          </section>
+
+          {/* Your Apps Section */}
+          <section className="bg-white px-4 py-4 border-b border-[#f3f4f6]">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col">
+                <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Your Apps</h3>
+                <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Manage your subscriptions</p>
+              </div>
+              <button className="flex items-center gap-1 text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]" onClick={togglePayBillModal}>
+                View All
+                <ChevronRightIcon className="stroke-[#155dfc] w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <AppCard
+                title="Cignal Postpaid"
+                description="Premium TV experience"
+                gradientFrom="from-[#2B7FFF]"
+                gradientTo="to-[#155DFB]"
+                textColor="#101828"
+                descriptionColor="#6a7282"
+                iconPaths={[
+                  { d: "M13.999 3.99971H33.9982V13.9989H13.999V3.99971Z", stroke: undefined, strokeWidth: 4 },
+                  { d: "M3.99971 13.999H43.9968V43.9959H3.99971V13.999Z", stroke: undefined, strokeWidth: 4 }
+                ]}
+              />
+              <AppCard
+                title="Cignal Prepaid"
+                description="Flexible TV plans"
+                gradientFrom="from-[#615FFF]"
+                gradientTo="to-[#4F39F6]"
+                textColor="#101828"
+                descriptionColor="#6a7282"
+                iconPaths={[
+                  { d: "M13.999 3.99971H33.9982V13.9989H13.999V3.99971Z", stroke: undefined, strokeWidth: 4 },
+                  { d: "M3.99971 13.999H43.9968V43.9959H3.99971V13.999Z", stroke: undefined, strokeWidth: 4 }
+                ]}
+              />
+              <AppCard
+                title="SatLite"
+                description="Mobile streaming"
+                gradientFrom="from-[#AD46FF]"
+                gradientTo="to-[#9810FA]"
+                textColor="#101828"
+                descriptionColor="#6a7282"
+                iconPaths={[
+                  { d: "M9.99927 3.99971V43.9968H37.9972V3.99971H9.99927Z", stroke: undefined, strokeWidth: 4 },
+                  { d: "M23.9982 35.9974L24.0182 35.9974", stroke: undefined, strokeWidth: 4 }
+                ]}
+              />
+              <AppCard
+                title="Cignal Play"
+                description="On-demand content"
+                gradientFrom="from-[#F6329A]"
+                gradientTo="to-[#E50076]"
+                textColor="#101828"
+                descriptionColor="#6a7282"
+                iconPaths={[
+                  { d: "M9.99927 5.9984H41.9994V41.9981H9.99927V5.9984Z", stroke: undefined, strokeWidth: 4 }
+                ]}
+              />
+              <AppCard
+                title="Pilipinas Live"
+                description="Local channels"
+                gradientFrom="from-[#00C850]"
+                gradientTo="to-[#00A63E]"
+                textColor="#101828"
+                descriptionColor="#6a7282"
+                iconPaths={[
+                  { d: "M3.99971 3.99971H43.9968V43.9968H3.99971V3.99971Z", stroke: undefined, strokeWidth: 4 },
+                  { d: "M15.9988 3.99971V43.9968", stroke: undefined, strokeWidth: 4 },
+                  { d: "M3.99971 23.9982H43.9968", stroke: undefined, strokeWidth: 4 }
+                ]}
+              />
+              <div className="min-w-[128px] h-[160px] rounded-xl border border-[#d1d5db] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <GenericIcon paths={[{ d: "M2.99659 1.9974L21.0021 1.9974C21.5542 1.9974 21.9997 2.44185 21.9997 2.99401L21.9997 22.0006C21.9997 22.5528 21.5542 22.9972 21.0021 22.9972L2.99659 22.9972C2.44185 22.9972 1.9973 22.5528 1.9973 22.0006L1.9973 2.99401C1.9973 2.44185 2.44185 1.9974 2.99659 1.9974Z", stroke: undefined, strokeWidth: 2 }]} size={24} className="stroke-[#99a1af]" />
+                  <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Cignal Super</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Wallet Preview Section */}
+          <section className="bg-gradient-to-br from-[#155DFB] to-[#4F39F6] px-4 py-4">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-[48px] h-[48px] rounded-full bg-white/[0.2] flex items-center justify-center">
+                    {/* Wallet icon paths */}
+                    <GenericIcon paths={[
+                        { d: "M2.99978 7.99942H20.9985V11.9991H2.99978V7.99942Z", stroke: undefined, strokeWidth: 2 },
+                        { d: "M11.9991 7.99942V20.9986", stroke: undefined, strokeWidth: 2 },
+                        { d: "M4.99963 11.9991H18.9986V20.9985H4.99963V11.9991Z", stroke: undefined, strokeWidth: 2 },
+                        { d: "M4.99963 2.99935H18.9986V7.99942H4.99963V2.99935Z", stroke: undefined, strokeWidth: 2 }
+                    ]} size={24} className="stroke-white" />
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">My Wallet</p>
+                  <h3 className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">2,450 Points</h3>
+                </div>
+              </div>
+              <button className="flex items-center gap-1 px-4 py-2 bg-white/[0.2] rounded-lg text-white text-base font-normal leading-6 tracking-[-0.3125px]" onClick={togglePayBillModal}>
+                View Wallet
+                <ChevronRightIcon className="stroke-white w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex justify-between gap-4">
+              <div className="flex-1 p-4 bg-white/[0.1] rounded-xl flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-2">
+                    {/* Available icon paths (star) */}
+                    <GenericIcon paths={[
+                        { d: "M1.66629 1.66629H11.664C11.9392 1.66629 12.1819 1.77797 12.3582 1.95427C12.5345 2.13057 12.6462 2.37329 12.6462 2.64848L12.6462 11.6443C12.6462 11.9195 12.5345 12.1622 12.3582 12.3385C12.1819 12.5148 11.9392 12.6265 11.664 12.6265H2.64848C2.37329 12.6265 2.13057 12.5148 1.95427 12.3385C1.77797 12.1622 1.66629 11.9195 1.66629 11.6443V1.66629Z", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M8.61473 8.63972L18.3242 18.3492", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M5.83202 4.99888H6.66517", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M12.1556 11.5641H14.5051", stroke: undefined, strokeWidth: 1.66629 }
+                    ]} size={20} className="stroke-[#FFDE20]" />
+                  <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">Available</p>
+                </div>
+                <p className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">2,450 pts</p>
+              </div>
+              <div className="flex-1 p-4 bg-white/[0.1] rounded-xl flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-2">
+                    {/* Rewards icon paths (gift box) */}
+                    <GenericIcon paths={[
+                        { d: "M2.49944 6.66517H17.4966V9.99775H2.49944V6.66517Z", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M9.99775 6.66517V17.4966", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M4.16573 9.99775H15.8302V17.4966H4.16573V9.99775Z", stroke: undefined, strokeWidth: 1.66629 },
+                        { d: "M4.16573 2.49908H15.8302V6.66517H4.16573V2.49908Z", stroke: undefined, strokeWidth: 1.66629 }
+                    ]} size={20} className="stroke-[#FD97D5]" />
+                  <p className="text-white/[0.9] text-base font-normal leading-6 tracking-[-0.3125px]">Rewards</p>
+                </div>
+                <p className="text-white text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">15 Available</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Entertainment Carousel */}
+          <section className="bg-white px-4 py-4 border-b border-[#f3f4f6]">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col">
+                <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Entertainment</h3>
+                <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Popular shows and series</p>
+              </div>
+              <button className="flex items-center gap-1 text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
+                See All
+                <ChevronRightIcon className="stroke-[#155dfc] w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <ContentCard
+                title="The Latest Drama Series"
+                category="Drama"
+                duration="8 Episodes"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Comedy Night Special"
+                category="Comedy"
+                duration="Season 5"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Documentary: Nature"
+                category="Documentary"
+                duration="1h 45m"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+            </div>
+          </section>
+
+          {/* Movies Carousel */}
+          <section className="bg-white px-4 py-4 border-b border-[#f3f4f6]">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col">
+                <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Movies</h3>
+                <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Blockbusters and classics</p>
+              </div>
+              <button className="flex items-center gap-1 text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
+                See All
+                <ChevronRightIcon className="stroke-[#155dfc] w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <ContentCard
+                title="Action Thriller 2024"
+                category="Action"
+                duration="2h 30m"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Romantic Comedy"
+                category="Romance"
+                duration="1h 55m"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Sci-Fi Adventure"
+                category="Sci-Fi"
+                duration="2h 45m"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+            </div>
+          </section>
+
+          {/* Sports & Live Events Carousel */}
+          <section className="bg-white px-4 py-4 border-b border-[#f3f4f6]">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col">
+                <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Sports & Live Events</h3>
+                <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Watch your favorite sports</p>
+              </div>
+              <button className="flex items-center gap-1 text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
+                See All
+                <ChevronRightIcon className="stroke-[#155dfc] w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+              <ContentCard
+                title="NBA Finals Game 7"
+                category="Basketball"
+                duration="Live"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Premier League Match"
+                category="Football"
+                duration="Today 8PM"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Tennis Grand Slam"
+                category="Tennis"
+                duration="Live Now"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailTo="to-[#1E2939]"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="Boxing Championship"
+                category="Boxing"
+                duration="Tomorrow"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+              <ContentCard
+                title="UFC Fight Night"
+                category="MMA"
+                duration="This Weekend"
+                gradientFrom="from-[#364153]"
+                gradientTo="to-[#1E2939]"
+                categoryColor="#99a1af"
+                detailColor="#99a1af"
+                iconColor="#99a1af"
+              />
+            </div>
+          </section>
+
+          {/* Help Section */}
+          <section className="bg-[#f3f4f6] px-4 py-4">
+            <div className="flex items-center gap-2 mb-4">
+              <GenericIcon paths={[
+                { d: "M1.94802 1.94795C6.01255 1.94795 9.73926 5.67465 9.73926 9.73919C9.73926 13.8037 6.01255 17.5304 1.94802 17.5304C-2.11651 17.5304 -5.84322 13.8037 -5.84322 9.73919C-5.84322 5.67465 -2.11651 1.94795 1.94802 1.94795Z", stroke: undefined, strokeWidth: 1.94786 },
+                { d: "M8.85299 6.81342H14.5314V12.6618H8.85299V6.81342Z", stroke: undefined, strokeWidth: 1.94786 },
+                { d: "M11.6871 16.5568L11.6971 16.5568", stroke: undefined, strokeWidth: 1.94786 }
+              ]} size={24} className="stroke-[#364153]" />
+              <h2 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Help & Support</h2>
+            </div>
+            <div className="flex gap-2 mb-4 border-b border-[#e5e7eb] pb-2">
+              <button className="flex-1 text-center py-2 text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
+                FAQs
+              </button>
+              <button className="flex-1 text-center py-2 text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">
+                Diagnostics
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-x-2 gap-y-4 mb-4">
+              <button className="flex-1 min-w-[160px] p-4 bg-white border border-[#e5e7eb] rounded-lg flex flex-col items-center justify-center gap-2">
+                <GenericIcon paths={[
+                    { d: "M11.687 19.4787L11.697 19.4787", stroke: undefined, strokeWidth: 1.94786 },
+                    { d: "M1.94778 4.87011H21.4264V8.59018H1.94778V4.87011Z", stroke: undefined, strokeWidth: 1.94786 },
+                    { d: "M4.86957 9.73997H18.5046V12.524H4.86957V9.73997Z", stroke: undefined, strokeWidth: 1.94786 },
+                    { d: "M8.27823 14.6086H15.1098V15.9996H8.27823V14.6086Z", stroke: undefined, strokeWidth: 1.94786 }
+                ]} size={24} className="stroke-[#155dfc]" />
+                <p className="text-[#364153] text-base font-normal leading-6 tracking-[-0.3125px]">Internet Issues</p>
+              </button>
+              <button className="flex-1 min-w-[160px] p-4 bg-white border border-[#e5e7eb] rounded-lg flex flex-col items-center justify-center gap-2">
+                <GenericIcon paths={[
+                    { d: "M6.81741 1.94795H16.5574L16.5574 6.81756L1.94779 6.81756L6.81741 1.94795Z", stroke: undefined, strokeWidth: 1.94786 },
+                    { d: "M1.94779 6.81756H21.4264V21.4261H1.94779V6.81756Z", stroke: undefined, strokeWidth: 1.94786 }
+                ]} size={24} className="stroke-[#155dfc]" />
+                <p className="text-[#364153] text-base font-normal leading-6 tracking-[-0.3125px]">No TV Signal</p>
+              </button>
+              <button className="flex-1 min-w-[160px] p-4 bg-white border border-[#e5e7eb] rounded-lg flex flex-col items-center justify-center gap-2">
+                <GenericIcon paths={[
+                    { d: "M2.96448 1.96468C7.03058 1.96468 10.7584 5.69248 10.7584 9.75858C10.7584 13.8247 7.03058 17.5525 2.96448 17.5525C-1.10162 17.5525 -4.82942 13.8247 -4.82942 9.75858C-4.82942 5.69248 -1.10162 1.96468 2.96448 1.96468Z", stroke: undefined, strokeWidth: 1.94786 },
+                    { d: "M8.76534 8.76495C14.5312 8.76495 19.4795 13.7132 19.4795 19.4791C19.4795 25.245 14.5312 30.1932 8.76534 30.1932C2.99944 30.1932 -1.48831 25.245 -1.48831 19.4791C-1.48831 13.7132 2.99944 8.76495 8.76534 8.76495Z", stroke: undefined, strokeWidth: 1.94786 }
+                ]} size={24} className="stroke-[#155dfc]" />
+                <p className="text-[#364153] text-base font-normal leading-6 tracking-[-0.3125px]">Reset Device</p>
+              </button>
+              <button className="flex-1 min-w-[160px] p-4 bg-white border border-[#e5e7eb] rounded-lg flex flex-col items-center justify-center gap-2">
+                <GenericIcon paths={[
+                    { d: "M1.94791 1.94788C6.01244 1.94788 9.73915 5.67459 9.73915 9.73912C9.73915 13.8037 6.01244 17.5304 1.94791 17.5304C-2.11662 17.5304 -5.84333 13.8037 -5.84333 9.73912C-5.84333 5.67459 -2.11662 1.94788 1.94791 1.94788Z", stroke: undefined, strokeWidth: 1.94786 }
+                ]} size={24} className="stroke-[#155dfc]" />
+                <p className="text-[#364153] text-base font-normal leading-6 tracking-[-0.3125px]">Call Support</p>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 mb-4">
+              <HelpDetail
+                question="How do I upgrade my subscription?"
+                answer="Go to your Current Plans section, select the plan you wish to upgrade, and follow the prompts. You can also contact customer support for assistance."
+                chevronColor="#6a7282"
+                textColor="#101828"
+              />
+              <HelpDetail
+                question="What payment methods are accepted?"
+                answer="We accept credit cards, debit cards, GCash, PayMaya, and over-the-counter payments at our partner establishments."
+                chevronColor="#6a7282"
+                textColor="#101828"
+              />
+              <HelpDetail
+                question="How can I earn more rewards points?"
+                answer="Earn points by paying bills on time, referring friends, participating in app activities, and subscribing to premium content."
+                chevronColor="#6a7282"
+                textColor="#101828"
+              />
+              <HelpDetail
+                question="Can I pause my subscription?"
+                answer="Yes, you can pause prepaid subscriptions. For postpaid, you may need to contact customer service to discuss options."
+                chevronColor="#6a7282"
+                textColor="#101828"
+              />
+            </div>
+            <button className="w-full py-3 rounded-lg border border-[#d1d5db] text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">
+              View All FAQs
+            </button>
+          </section>
+
+          {/* Still Need Help Section */}
+          <section className="px-4 py-4 bg-[#eff6ff] rounded-lg mx-4 mt-4 mb-24"> {/* Added margin bottom for spacing above bottom nav */}
+            <p className="text-[#101828] text-base font-normal leading-6 tracking-[-0.3125px] mb-3">Still need help?</p>
+            <div className="flex gap-2">
+              <button className="flex-1 py-3 bg-white border border-[#bbdcfc] rounded-lg text-[#155dfc] text-base font-normal leading-6 tracking-[-0.3125px]">
+                Call Support
+              </button>
+              <button className="flex-1 py-3 bg-[#155dfc] rounded-lg text-white text-base font-normal leading-6 tracking-[-0.3125px]">
+                Chat with Us
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* ChatBot Floating Button */}
+      <div className="fixed bottom-24 right-4 z-20"> {/* Adjusted position to avoid overlap with bottom nav */}
+        <div className="relative">
+          <div className="absolute inset-0 rounded-full border-4 border-[#155dfc] animate-ping-slow-fade" />
+          <button aria-label="Open Chatbot" className="w-14 h-14 rounded-full bg-[#004FFF] flex items-center justify-center shadow-[0_4px_6px_rgba(0,0,0,0.1),0_10px_15px_rgba(0,0,0,0.1)]" onClick={togglePayBillModal}> {/* Reusing modal for demo */}
+            <GenericIcon paths={[{ d: "M2.00031 2.00031C8.00031 2.00031 19.9986 2.00031 19.9986 2.00031C19.9986 8.00031 19.9986 19.9987 19.9986 19.9987C13.9986 19.9987 2.00031 19.9987 2.00031 19.9987C2.00031 13.9987 2.00031 2.00031 2.00031 2.00031Z", stroke: undefined, strokeWidth: 2 }]} size={24} className="stroke-white" />
+          </button>
+        </div>
+      </div>
 
       {/* Bottom Navigation */}
-      <BottomNav navItems={navItems} />
+      <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-[#e5e7eb] pt-2 pb-4 px-2 z-10">
+        <div className="flex justify-around h-[56px]">
+          <button aria-label="Home" className="flex flex-col items-center justify-center gap-1 w-[65px] text-[#155dfc]">
+            <GenericIcon paths={[
+                { d: "M7.49832 9.99775V17.4961", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M2.49944 1.66589H17.4966V17.4961H2.49944V1.66589Z", stroke: undefined, strokeWidth: 1.66629 }
+            ]} size={20} className="stroke-[#155dfc]" />
+            <span className="text-base font-normal leading-6 tracking-[-0.3125px]">Home</span>
+          </button>
+          <button aria-label="Subscriptions" className="flex flex-col items-center justify-center gap-1 w-[109.5px] text-[#4a5565]">
+            <GenericIcon paths={[
+                { d: "M1.66629 4.16573H18.3326V15.8302H1.66629V4.16573Z", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M1.66629 8.33146H18.3326", stroke: undefined, strokeWidth: 1.66629 }
+            ]} size={20} className="stroke-[#4a5565]" />
+            <span className="text-base font-normal leading-6 tracking-[-0.3125px]">Subscriptions</span>
+          </button>
+          <button aria-label="Rewards" className="flex flex-col items-center justify-center gap-1 w-[58px] text-[#4a5565]">
+            <GenericIcon paths={[
+                { d: "M2.49944 6.66517H17.4966V9.99775H2.49944V6.66517Z", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M9.99775 6.66517V17.4966", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M4.16573 9.99775H15.8302V17.4966H4.16573V9.99775Z", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M4.16573 2.49908H15.8302V6.66517H4.16573V2.49908Z", stroke: undefined, strokeWidth: 1.66629 }
+            ]} size={20} className="stroke-[#4a5565]" />
+            <span className="text-base font-normal leading-6 tracking-[-0.3125px]">Rewards</span>
+          </button>
+          <button aria-label="Help" className="flex flex-col items-center justify-center gap-1 w-[80px] text-[#4a5565]">
+            <GenericIcon paths={[
+                { d: "M1.66629 1.66629C6.01255 1.66629 9.73926 5.393 9.73926 9.73919C9.73926 14.0854 6.01255 17.8121 1.66629 17.8121C-2.68097 17.8121 -6.40768 14.0854 -6.40768 9.73919C-6.40768 5.393 -2.68097 1.66629 1.66629 1.66629Z", stroke: undefined, strokeWidth: 1.66629 }
+            ]} size={20} className="stroke-[#4a5565]" />
+            <span className="text-base font-normal leading-6 tracking-[-0.3125px]">Help</span>
+          </button>
+          <button aria-label="Profile" className="flex flex-col items-center justify-center gap-1 w-[68px] text-[#4a5565]">
+            <GenericIcon paths={[
+                { d: "M4.16573 12.4972H15.8302V17.4961H4.16573V12.4972Z", stroke: undefined, strokeWidth: 1.66629 },
+                { d: "M6.66517 2.49944C9.77025 2.49944 12.3326 5.06179 12.3326 8.16588C12.3326 11.2704 9.77025 13.8327 6.66517 13.8327C3.5601 13.8327 0.997742 11.2704 0.997742 8.16588C0.997742 5.06179 3.5601 2.49944 6.66517 2.49944Z", stroke: undefined, strokeWidth: 1.66629 }
+            ]} size={20} className="stroke-[#4a5565]" />
+            <span className="text-base font-normal leading-6 tracking-[-0.3125px]">Profile</span>
+            <div className="absolute w-2 h-2 rounded-full bg-[#fa2c36] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 mt-[-10px] ml-[15px]" />
+          </button>
+        </div>
+      </nav>
 
-      {/* Floating Chatbot Button */}
-      <ChatBotButton onClick={handleOpenPayBillModal} />
-
-      {/* Pay Bill Modal */}
-      <PayBillModal isOpen={isPayBillModalOpen} onClose={handleClosePayBillModal} />
+      {/* Pay Your Bill Modal */}
+      {showPayBillModal && (
+        <div className="fixed inset-0 bg-black/[0.7] z-30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6 flex flex-col gap-6">
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[#155dfc] text-[16px] font-normal leading-6 tracking-[-0.3125px]">Step 3 of 4</p>
+              <h3 className="text-[#101828] text-[20px] font-medium leading-[30px] tracking-[-0.44921875px]">Pay Your Bill</h3>
+              <p className="text-[#4a5565] text-base font-normal leading-6 tracking-[-0.3125px]">Easily view and pay your bills directly from the app.</p>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#99a1af]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#99a1af]" />
+                <div className="w-6 h-1.5 rounded-full bg-[#155dfc]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#99a1af]" />
+              </div>
+              <button aria-label="Close modal" onClick={togglePayBillModal} className="w-5 h-5 flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M4.99888 4.99888L14.9966 14.9966" stroke="#99a1af" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.99888 14.9966L14.9966 4.99888" stroke="#99a1af" strokeWidth="1.66629" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={togglePayBillModal} className="flex-1 px-4 py-2 bg-white border border-black/[0.1] rounded-lg text-[#101828] text-base font-normal leading-6 tracking-[-0.3125px]">
+                <ChevronRightIcon className="inline-block transform rotate-180 stroke-[#101828] w-4 h-4 mr-1" />
+                Back
+              </button>
+              <button className="flex-1 px-4 py-2 bg-[#155dfc] rounded-lg text-white text-base font-normal leading-6 tracking-[-0.3125px]">
+                Next
+                <ChevronRightIcon className="inline-block stroke-white w-4 h-4 ml-1" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+};
+
+// Add keyframes for the custom ping animation in your global CSS or in a style tag if not using PostCSS for Tailwind.
+// Example for tailwind.config.js (needs to be adapted if this is a standalone file):
+/*
+module.exports = {
+  theme: {
+    extend: {
+      keyframes: {
+        'ping-slow-fade': {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '75%, 100%': { transform: 'scale(1.5)', opacity: '0' },
+        }
+      },
+      animation: {
+        'ping-slow-fade': 'ping-slow-fade 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+      }
+    }
+  }
 }
+*/
