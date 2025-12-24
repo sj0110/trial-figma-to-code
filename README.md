@@ -1,1 +1,0 @@
-# trial-figma-to-code
